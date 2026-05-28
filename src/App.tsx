@@ -5,6 +5,7 @@ import type { ViewMode } from './types'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import Preview from './components/Preview'
+import Login from './components/Login'
 import { parseMarkdown } from './utils/markdown'
 import './index.css'
 
@@ -67,6 +68,27 @@ function useTheme() {
 
 export default function App() {
   const { isDark, toggle: toggleTheme } = useTheme()
+  const [jellyfinToken, setJellyfinToken] = useState<string | null>(() => {
+    return localStorage.getItem('jellyfin-token')
+  })
+  const [jellyfinUser, setJellyfinUser] = useState<string | null>(() => {
+    return localStorage.getItem('jellyfin-username')
+  })
+
+  const handleLoginSuccess = (token: string, username: string) => {
+    localStorage.setItem('jellyfin-token', token)
+    localStorage.setItem('jellyfin-username', username)
+    setJellyfinToken(token)
+    setJellyfinUser(username)
+  }
+
+  const handleLogout = () => {
+    localStorage.removeItem('jellyfin-token')
+    localStorage.removeItem('jellyfin-username')
+    setJellyfinToken(null)
+    setJellyfinUser(null)
+  }
+
   const [content, setContent] = useState(() => {
     console.log('Reading from localStorage (content):', localStorage.getItem('md-content')?.substring(0, 20) + '...');
     return localStorage.getItem('md-content') ?? DEFAULT_CONTENT
@@ -337,6 +359,10 @@ ${parseMarkdown(content)}
   const viewClass = viewMode === 'editor' ? 'view-editor-only' : viewMode === 'preview' ? 'view-preview-only' : ''
   const showWelcome = content.trim() === '' && !fileName
 
+  if (!jellyfinToken) {
+    return <Login onLoginSuccess={handleLoginSuccess} />
+  }
+
   return (
     <div
       className="app"
@@ -351,6 +377,7 @@ ${parseMarkdown(content)}
         isDark={isDark}
         viewMode={viewMode}
         hasSidebar={hasSidebar}
+        username={jellyfinUser}
         onOpen={handleOpen}
         onSave={handleSave}
         onSaveAs={handleSaveAs}
@@ -360,6 +387,7 @@ ${parseMarkdown(content)}
         onToggleSidebar={() => setHasSidebar(s => !s)}
         onExportHtml={handleExportHtml}
         onPrint={handlePrint}
+        onLogout={handleLogout}
       />
       <div className="app-body">
         {hasSidebar && <Sidebar content={content} activeHeading={activeHeading} />}

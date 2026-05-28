@@ -1,7 +1,7 @@
 import type { ViewMode } from '../types'
 import {
   FolderOpen, Save, FilePlus, Sun, Moon,
-  BookMarked, PanelLeft, Rows, Columns, Download, Printer, PanelLeftOpen
+  BookMarked, PanelLeft, Rows, Columns, Download, Printer, PanelLeftOpen, LogOut
 } from 'lucide-react'
 
 interface ToolbarProps {
@@ -10,6 +10,7 @@ interface ToolbarProps {
   isDark: boolean
   viewMode: ViewMode
   hasSidebar: boolean
+  username: string | null
   onOpen: () => void
   onSave: () => void
   onSaveAs: () => void
@@ -19,6 +20,7 @@ interface ToolbarProps {
   onToggleSidebar: () => void
   onExportHtml: () => void
   onPrint: () => void
+  onLogout: () => void
 }
 
 export default function Toolbar({
@@ -27,6 +29,7 @@ export default function Toolbar({
   isDark,
   viewMode,
   hasSidebar,
+  username,
   onOpen,
   onSave,
   onNew,
@@ -35,6 +38,7 @@ export default function Toolbar({
   onToggleSidebar,
   onExportHtml,
   onPrint,
+  onLogout,
 }: ToolbarProps) {
   return (
     <header className="toolbar" role="toolbar" aria-label="Main toolbar">
@@ -173,6 +177,27 @@ export default function Toolbar({
       >
         {isDark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
+
+      {username && (
+        <>
+          <div className="toolbar-divider" />
+          <div className="toolbar-user-profile" title={`Влязохте като ${username} в movies.acyapps.com`}>
+            <div className="toolbar-user-avatar">
+              {username.charAt(0)}
+            </div>
+            <span className="toolbar-user-name">{username}</span>
+            <button
+              className="btn btn-ghost btn-icon"
+              onClick={onLogout}
+              style={{ padding: '2px', marginLeft: '4px' }}
+              title="Изход"
+              aria-label="Изход"
+            >
+              <LogOut size={14} />
+            </button>
+          </div>
+        </>
+      )}
     </header>
   )
 }
