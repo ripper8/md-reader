@@ -1,11 +1,12 @@
 import React, { useState } from 'react'
-import { User, Lock, LogIn, AlertCircle, Eye, EyeOff, ShieldCheck, Server } from 'lucide-react'
+import { User, Lock, LogIn, AlertCircle, Eye, EyeOff, ShieldCheck, Server, X } from 'lucide-react'
 
 interface LoginProps {
   onLoginSuccess: (token: string, username: string) => void
+  onClose: () => void
 }
 
-export default function Login({ onLoginSuccess }: LoginProps) {
+export default function Login({ onLoginSuccess, onClose }: LoginProps) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
@@ -46,6 +47,7 @@ export default function Login({ onLoginSuccess }: LoginProps) {
       const data = await response.json()
       if (data.AccessToken && data.User) {
         onLoginSuccess(data.AccessToken, data.User.Name)
+        onClose()
       } else {
         throw new Error('Сървърът върна непълен отговор.')
       }
@@ -58,12 +60,14 @@ export default function Login({ onLoginSuccess }: LoginProps) {
   }
 
   return (
-    <div className="login-container">
-      {/* Decorative premium background elements */}
-      <div className="login-bg-glow-1"></div>
-      <div className="login-bg-glow-2"></div>
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="login-card fade-in" onClick={e => e.stopPropagation()} style={{ position: 'relative' }}>
+        
+        {/* Close Button */}
+        <button className="modal-close-btn" onClick={onClose} title="Затвори">
+          <X size={18} />
+        </button>
 
-      <div className="login-card fade-in">
         <div className="login-header">
           <div className="login-logo">
             <ShieldCheck size={32} className="login-logo-icon" />
