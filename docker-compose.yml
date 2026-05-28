@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  md-reader:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: md-reader
+    ports:
+      - "5179:5179"
+    restart: unless-stopped
