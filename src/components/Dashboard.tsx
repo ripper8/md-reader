@@ -1,6 +1,6 @@
-import React, { useState, useMemo } from 'react'
+import { useState, useMemo } from 'react'
 import { FileText, FolderOpen, FilePlus, Pin, Trash2, Search, Sparkles } from 'lucide-react'
-import { HistoryItem } from '../utils/history'
+import type { HistoryItem } from '../utils/history'
 
 interface DashboardProps {
   history: HistoryItem[]

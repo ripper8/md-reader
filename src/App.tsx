@@ -1,12 +1,21 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { FileText, Upload, BookMarked, FolderOpen } from 'lucide-react'
+import { FileText, Upload } from 'lucide-react'
 import Toolbar from './components/Toolbar'
 import type { ViewMode } from './types'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import Preview from './components/Preview'
 import Login from './components/Login'
+import Dashboard from './components/Dashboard'
 import { parseMarkdown } from './utils/markdown'
+import {
+  getHistory,
+  saveToHistory,
+  removeFromHistory,
+  togglePinHistory,
+  mergeAnonymousHistory
+} from './utils/history'
+import type { HistoryItem } from './utils/history'
 import './index.css'
 
 const DEFAULT_CONTENT = `# Welcome to MDReader 👋
@@ -68,25 +77,49 @@ function useTheme() {
 
 export default function App() {
   const { isDark, toggle: toggleTheme } = useTheme()
-  const [jellyfinToken, setJellyfinToken] = useState<string | null>(() => {
-    return localStorage.getItem('jellyfin-token')
-  })
   const [jellyfinUser, setJellyfinUser] = useState<string | null>(() => {
     return localStorage.getItem('jellyfin-username')
   })
+  const [history, setHistory] = useState<HistoryItem[]>(() => {
+    return getHistory(localStorage.getItem('jellyfin-username'))
+  })
+  const [isLoginOpen, setIsLoginOpen] = useState(false)
+
+  // Update history list when the active user changes
+  useEffect(() => {
+    setHistory(getHistory(jellyfinUser))
+  }, [jellyfinUser])
 
   const handleLoginSuccess = (token: string, username: string) => {
+    // Merge anonymous history entries into the user's history
+    mergeAnonymousHistory(username)
+    
     localStorage.setItem('jellyfin-token', token)
     localStorage.setItem('jellyfin-username', username)
-    setJellyfinToken(token)
     setJellyfinUser(username)
   }
 
   const handleLogout = () => {
     localStorage.removeItem('jellyfin-token')
     localStorage.removeItem('jellyfin-username')
-    setJellyfinToken(null)
     setJellyfinUser(null)
+  }
+
+  const handleSelectHistoryFile = (fileContent: string, name: string) => {
+    fileHandleRef.current.handle = null
+    setContent(fileContent)
+    setFileName(name)
+    setIsModified(false)
+  }
+
+  const handleDeleteHistoryFile = (id: string) => {
+    const updated = removeFromHistory(id, jellyfinUser)
+    setHistory(updated)
+  }
+
+  const handleTogglePinHistory = (id: string) => {
+    const updated = togglePinHistory(id, jellyfinUser)
+    setHistory(updated)
   }
 
   const [content, setContent] = useState(() => {
@@ -114,6 +147,19 @@ export default function App() {
       localStorage.removeItem('md-filename')
     }
   }, [content, fileName])
+
+  // Debounced auto-save effect for edited documents (saves changes after 3s of inactivity)
+  useEffect(() => {
+    if (!isModified || !fileName || content.trim() === '') return
+
+    const timer = setTimeout(() => {
+      const updated = saveToHistory(fileName, content, jellyfinUser)
+      setHistory(updated)
+      setIsModified(false)
+    }, 3000)
+
+    return () => clearTimeout(timer)
+  }, [content, fileName, isModified, jellyfinUser])
 
   const fileHandleRef = useRef<FileHandleRef>({ handle: null })
   const resizerRef = useRef<HTMLDivElement>(null)
@@ -357,11 +403,7 @@ ${parseMarkdown(content)}
   }, [content, viewMode])
 
   const viewClass = viewMode === 'editor' ? 'view-editor-only' : viewMode === 'preview' ? 'view-preview-only' : ''
-  const showWelcome = content.trim() === '' && !fileName
-
-  if (!jellyfinToken) {
-    return <Login onLoginSuccess={handleLoginSuccess} />
-  }
+  const showDashboard = content.trim() === '' && !fileName
 
   return (
     <div
@@ -388,28 +430,20 @@ ${parseMarkdown(content)}
         onExportHtml={handleExportHtml}
         onPrint={handlePrint}
         onLogout={handleLogout}
+        onOpenLogin={() => setIsLoginOpen(true)}
       />
       <div className="app-body">
-        {hasSidebar && <Sidebar content={content} activeHeading={activeHeading} />}
-        {showWelcome ? (
-          <div className="welcome-screen">
-            <div className="welcome-logo"><BookMarked size={48} /></div>
-            <h1 className="welcome-title">MDReader</h1>
-            <p className="welcome-subtitle">A simple, beautiful, and fast Markdown editor for your local files.</p>
-            <div className="welcome-actions">
-              <button className="btn btn-primary" onClick={handleOpen}>
-                <FolderOpen size={16} /> Open a File
-              </button>
-              <button className="btn btn-ghost" onClick={handleNew} style={{ borderColor: 'var(--border)' }}>
-                Create New File
-              </button>
-            </div>
-            <div className="welcome-shortcut">
-              <span>Or drag & drop a</span>
-              <kbd>.md</kbd>
-              <span>file anywhere</span>
-            </div>
-          </div>
+        {hasSidebar && !showDashboard && <Sidebar content={content} activeHeading={activeHeading} />}
+        {showDashboard ? (
+          <Dashboard
+            history={history}
+            username={jellyfinUser}
+            onOpenFile={handleOpen}
+            onNewFile={handleNew}
+            onSelectFile={handleSelectHistoryFile}
+            onDeleteFile={handleDeleteHistoryFile}
+            onTogglePin={handleTogglePinHistory}
+          />
         ) : (
           <main className={`editor-area ${viewClass}`}>
             <div className="pane" ref={editorPaneRef}>
@@ -448,6 +482,14 @@ ${parseMarkdown(content)}
           <div className="drag-overlay-subtext">Supports .md, .markdown, and .mdx</div>
         </div>
       </div>
+
+      {/* Login Modal Overlay */}
+      {isLoginOpen && (
+        <Login
+          onLoginSuccess={handleLoginSuccess}
+          onClose={() => setIsLoginOpen(false)}
+        />
+      )}
     </div>
   )
 }
