@@ -1,7 +1,7 @@
 import type { ViewMode } from '../types'
 import {
   FolderOpen, Save, FilePlus, Sun, Moon,
-  BookMarked, PanelLeft, Rows, Columns, Download, Printer, PanelLeftOpen, LogOut
+  BookMarked, PanelLeft, Rows, Columns, Download, Printer, PanelLeftOpen, LogOut, LogIn
 } from 'lucide-react'
 
 interface ToolbarProps {
@@ -21,6 +21,7 @@ interface ToolbarProps {
   onExportHtml: () => void
   onPrint: () => void
   onLogout: () => void
+  onOpenLogin: () => void
 }
 
 export default function Toolbar({
@@ -39,6 +40,7 @@ export default function Toolbar({
   onExportHtml,
   onPrint,
   onLogout,
+  onOpenLogin,
 }: ToolbarProps) {
   return (
     <header className="toolbar" role="toolbar" aria-label="Main toolbar">
@@ -178,7 +180,7 @@ export default function Toolbar({
         {isDark ? <Sun size={18} /> : <Moon size={18} />}
       </button>
 
-      {username && (
+      {username ? (
         <>
           <div className="toolbar-divider" />
           <div className="toolbar-user-profile" title={`Влязохте като ${username} в movies.acyapps.com`}>
@@ -196,6 +198,21 @@ export default function Toolbar({
               <LogOut size={14} />
             </button>
           </div>
+        </>
+      ) : (
+        <>
+          <div className="toolbar-divider" />
+          <button
+            id="btn-login-trigger"
+            className="btn btn-ghost"
+            onClick={onOpenLogin}
+            style={{ color: 'var(--accent)', borderColor: 'var(--accent-glow)' }}
+            title="Вход с Jellyfin"
+            aria-label="Вход с Jellyfin"
+          >
+            <LogIn size={16} />
+            <span>Вход</span>
+          </button>
         </>
       )}
     </header>
