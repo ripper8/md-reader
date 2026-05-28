@@ -16,6 +16,7 @@ import {
   mergeAnonymousHistory
 } from './utils/history'
 import type { HistoryItem } from './utils/history'
+import { safeStorage } from './utils/storage'
 import './index.css'
 
 const DEFAULT_CONTENT = `# Welcome to MDReader 👋
@@ -60,7 +61,7 @@ interface FileHandleRef {
 
 function useTheme() {
   const [isDark, setIsDark] = useState(() => {
-    const saved = localStorage.getItem('md-theme')
+    const saved = safeStorage.getItem('md-theme')
     if (saved !== null) {
       return saved === 'dark'
     }
@@ -69,7 +70,7 @@ function useTheme() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', isDark ? 'dark' : 'light')
-    localStorage.setItem('md-theme', isDark ? 'dark' : 'light')
+    safeStorage.setItem('md-theme', isDark ? 'dark' : 'light')
   }, [isDark])
 
   return { isDark, toggle: () => setIsDark(d => !d) }
@@ -78,10 +79,10 @@ function useTheme() {
 export default function App() {
   const { isDark, toggle: toggleTheme } = useTheme()
   const [jellyfinUser, setJellyfinUser] = useState<string | null>(() => {
-    return localStorage.getItem('jellyfin-username')
+    return safeStorage.getItem('jellyfin-username')
   })
   const [history, setHistory] = useState<HistoryItem[]>(() => {
-    return getHistory(localStorage.getItem('jellyfin-username'))
+    return getHistory(safeStorage.getItem('jellyfin-username'))
   })
   const [isLoginOpen, setIsLoginOpen] = useState(false)
 
@@ -94,14 +95,14 @@ export default function App() {
     // Merge anonymous history entries into the user's history
     mergeAnonymousHistory(username)
     
-    localStorage.setItem('jellyfin-token', token)
-    localStorage.setItem('jellyfin-username', username)
+    safeStorage.setItem('jellyfin-token', token)
+    safeStorage.setItem('jellyfin-username', username)
     setJellyfinUser(username)
   }
 
   const handleLogout = () => {
-    localStorage.removeItem('jellyfin-token')
-    localStorage.removeItem('jellyfin-username')
+    safeStorage.removeItem('jellyfin-token')
+    safeStorage.removeItem('jellyfin-username')
     setJellyfinUser(null)
   }
 
@@ -123,12 +124,12 @@ export default function App() {
   }
 
   const [content, setContent] = useState(() => {
-    console.log('Reading from localStorage (content):', localStorage.getItem('md-content')?.substring(0, 20) + '...');
-    return localStorage.getItem('md-content') ?? DEFAULT_CONTENT
+    console.log('Reading from safeStorage (content):', safeStorage.getItem('md-content')?.substring(0, 20) + '...');
+    return safeStorage.getItem('md-content') ?? DEFAULT_CONTENT
   })
   const [fileName, setFileName] = useState<string | null>(() => {
-    console.log('Reading from localStorage (fileName):', localStorage.getItem('md-filename'));
-    return localStorage.getItem('md-filename') ?? 'welcome.md'
+    console.log('Reading from safeStorage (fileName):', safeStorage.getItem('md-filename'));
+    return safeStorage.getItem('md-filename') ?? 'welcome.md'
   })
   const [isModified, setIsModified] = useState(false)
   const [viewMode, setViewMode] = useState<ViewMode>('split')
@@ -138,13 +139,13 @@ export default function App() {
   const [activeHeading, setActiveHeading] = useState('')
 
   useEffect(() => {
-    console.log('Writing to localStorage (content):', content.substring(0, 20) + '...');
-    console.log('Writing to localStorage (fileName):', fileName);
-    localStorage.setItem('md-content', content)
+    console.log('Writing to safeStorage (content):', content.substring(0, 20) + '...');
+    console.log('Writing to safeStorage (fileName):', fileName);
+    safeStorage.setItem('md-content', content)
     if (fileName) {
-      localStorage.setItem('md-filename', fileName)
+      safeStorage.setItem('md-filename', fileName)
     } else {
-      localStorage.removeItem('md-filename')
+      safeStorage.removeItem('md-filename')
     }
   }, [content, fileName])
 

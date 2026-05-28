@@ -1,3 +1,5 @@
+import { safeStorage } from './storage';
+
 export interface HistoryItem {
   id: string;
   fileName: string;
@@ -13,7 +15,7 @@ const getHistoryKey = (username: string | null): string => {
 
 export const getHistory = (username: string | null): HistoryItem[] => {
   try {
-    const raw = localStorage.getItem(getHistoryKey(username));
+    const raw = safeStorage.getItem(getHistoryKey(username));
     if (!raw) return [];
     const items: HistoryItem[] = JSON.parse(raw);
     return items.sort((a, b) => b.lastOpened - a.lastOpened);
@@ -57,14 +59,14 @@ export const saveToHistory = (
   }
   
   const sorted = items.sort((a, b) => b.lastOpened - a.lastOpened);
-  localStorage.setItem(getHistoryKey(username), JSON.stringify(sorted));
+  safeStorage.setItem(getHistoryKey(username), JSON.stringify(sorted));
   return sorted;
 };
 
 export const removeFromHistory = (id: string, username: string | null): HistoryItem[] => {
   const items = getHistory(username);
   const filtered = items.filter(item => item.id !== id);
-  localStorage.setItem(getHistoryKey(username), JSON.stringify(filtered));
+  safeStorage.setItem(getHistoryKey(username), JSON.stringify(filtered));
   return filtered;
 };
 
@@ -76,7 +78,7 @@ export const togglePinHistory = (id: string, username: string | null): HistoryIt
     }
     return item;
   });
-  localStorage.setItem(getHistoryKey(username), JSON.stringify(updated));
+  safeStorage.setItem(getHistoryKey(username), JSON.stringify(updated));
   return updated.sort((a, b) => b.lastOpened - a.lastOpened);
 };
 
@@ -93,6 +95,6 @@ export const mergeAnonymousHistory = (username: string): void => {
     }
   });
   
-  localStorage.setItem(getHistoryKey(username), JSON.stringify(userItems.sort((a, b) => b.lastOpened - a.lastOpened)));
-  localStorage.removeItem(getHistoryKey(null)); // Изчистваме анонимната след сливане
+  safeStorage.setItem(getHistoryKey(username), JSON.stringify(userItems.sort((a, b) => b.lastOpened - a.lastOpened)));
+  safeStorage.removeItem(getHistoryKey(null)); // Изчистваме анонимната след сливане
 };
