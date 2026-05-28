@@ -1404,4 +1404,302 @@ body {
   font-weight: 600;
 }
 
+/* ===================================================
+   Dashboard Premium Aesthetics
+   =================================================== */
+.dashboard-container {
+  flex: 1;
+  display: flex;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 40px var(--space-6);
+  background: var(--bg-base);
+  overflow-y: auto;
+  min-height: calc(100vh - var(--toolbar-height) - var(--statusbar-height));
+}
+
+.dashboard-card {
+  width: 100%;
+  max-width: 860px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  overflow: hidden;
+  position: relative;
+  transition: border-color var(--transition-base);
+}
+
+.dashboard-card:hover {
+  border-color: rgba(16, 185, 129, 0.15);
+}
+
+.dashboard-header {
+  padding: 32px 32px 24px 32px;
+  border-bottom: 1px solid var(--border);
+  background: radial-gradient(circle at 100% 0%, var(--accent-dim) 0%, transparent 60%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.dashboard-welcome {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: var(--space-4);
+}
+
+.dashboard-title-area h1 {
+  font-size: 26px;
+  font-weight: 800;
+  color: var(--text-primary);
+  letter-spacing: -0.5px;
+  margin-top: 4px;
+}
+
+.dashboard-welcome-label {
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--accent);
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+}
+
+.dashboard-welcome-sub {
+  color: var(--text-secondary);
+  font-size: 13.5px;
+  margin-top: 4px;
+}
+
+.dashboard-quick-actions {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.dashboard-search-row {
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  margin-top: 8px;
+}
+
+.dashboard-search-wrapper {
+  position: relative;
+  flex: 1;
+}
+
+.dashboard-search-icon {
+  position: absolute;
+  left: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--text-muted);
+  pointer-events: none;
+}
+
+.dashboard-search-input {
+  width: 100%;
+  padding: 10px 16px 10px 38px;
+  border-radius: var(--radius-lg);
+  border: 1px solid var(--border);
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: var(--font-ui);
+  font-size: 13px;
+  outline: none;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-search-input:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-glow);
+}
+
+.dashboard-body {
+  padding: 24px 32px 32px 32px;
+}
+
+.dashboard-section {
+  margin-bottom: 28px;
+}
+
+.dashboard-section:last-child {
+  margin-bottom: 0;
+}
+
+.dashboard-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-muted);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.dashboard-section-title.pinned {
+  color: var(--accent);
+}
+
+.dashboard-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.dashboard-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-item:hover {
+  border-color: rgba(16, 185, 129, 0.2);
+  background: var(--bg-hover);
+  transform: translateY(-0.5px);
+}
+
+.dashboard-item.pinned {
+  background: rgba(16, 185, 129, 0.03);
+  border-color: rgba(16, 185, 129, 0.12);
+}
+
+.dashboard-item.pinned:hover {
+  background: rgba(16, 185, 129, 0.06);
+  border-color: rgba(16, 185, 129, 0.25);
+}
+
+.dashboard-item-info {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.dashboard-item-icon {
+  color: var(--accent);
+}
+
+.dashboard-item-name {
+  color: var(--text-primary);
+  font-size: 13.5px;
+  font-weight: 600;
+}
+
+.dashboard-item-meta {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: 2px;
+}
+
+.dashboard-item-actions {
+  display: flex;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.dashboard-action-btn {
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+}
+
+.dashboard-action-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .dashboard-action-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.dashboard-action-btn.pinned {
+  color: var(--accent);
+}
+
+.dashboard-action-btn.pinned:hover {
+  color: var(--accent-hover);
+}
+
+.dashboard-action-btn.delete:hover {
+  color: var(--error);
+  background: rgba(239, 68, 68, 0.08);
+}
+
+.dashboard-empty {
+  padding: 24px;
+  text-align: center;
+  color: var(--text-muted);
+  background: var(--bg-panel);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius-lg);
+  font-style: italic;
+}
+
+/* ===================================================
+   Modal Dialog Premium Styles (Login Overlay)
+   =================================================== */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(11, 13, 16, 0.7);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease-out;
+}
+
+[data-theme='light'] .modal-overlay {
+  background: rgba(244, 245, 246, 0.7);
+}
+
+.modal-close-btn {
+  position: absolute;
+  top: 16px;
+  right: 16px;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all var(--transition-fast);
+  z-index: 20;
+}
+
+.modal-close-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--text-primary);
+}
+
+[data-theme='light'] .modal-close-btn:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
 
