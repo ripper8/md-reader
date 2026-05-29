@@ -9,15 +9,14 @@ export interface HistoryItem {
   sizeBytes: number;
 }
 
-const getHistoryKey = (username: string | null): string => {
-  return `mdreader-history-${username ? username.toLowerCase().trim() : 'anonymous'}`;
-};
+const HISTORY_KEY = 'mdreader-history';
 
-export const getHistory = (username: string | null): HistoryItem[] => {
+export const getHistory = (): HistoryItem[] => {
   try {
-    const raw = safeStorage.getItem(getHistoryKey(username));
+    const raw = safeStorage.getItem(HISTORY_KEY);
     if (!raw) return [];
-    const items: HistoryItem[] = JSON.parse(raw);
+    const items = JSON.parse(raw);
+    if (!Array.isArray(items)) return [];
     return items.sort((a, b) => b.lastOpened - a.lastOpened);
   } catch (e) {
     console.error('Failed to parse history', e);
@@ -28,17 +27,15 @@ export const getHistory = (username: string | null): HistoryItem[] => {
 export const saveToHistory = (
   fileName: string,
   content: string,
-  username: string | null,
   isPinned: boolean = false
 ): HistoryItem[] => {
-  const items = getHistory(username);
+  const items = getHistory();
   const existingIndex = items.findIndex(item => item.fileName === fileName);
   
   const sizeBytes = new Blob([content]).size;
   const now = Date.now();
   
   if (existingIndex !== -1) {
-    // Обновяваме съществуващия
     const existing = items[existingIndex];
     items[existingIndex] = {
       ...existing,
@@ -47,9 +44,8 @@ export const saveToHistory = (
       sizeBytes,
     };
   } else {
-    // Създаваме нов
     items.push({
-      id: `doc-${now}-${Math.random().toString(36).substr(2, 9)}`,
+      id: `doc-${now}-${Math.random().toString(36).slice(2, 11)}`,
       fileName,
       content,
       lastOpened: now,
@@ -59,42 +55,97 @@ export const saveToHistory = (
   }
   
   const sorted = items.sort((a, b) => b.lastOpened - a.lastOpened);
-  safeStorage.setItem(getHistoryKey(username), JSON.stringify(sorted));
+  safeStorage.setItem(HISTORY_KEY, JSON.stringify(sorted));
   return sorted;
 };
 
-export const removeFromHistory = (id: string, username: string | null): HistoryItem[] => {
-  const items = getHistory(username);
+export const removeFromHistory = (id: string): HistoryItem[] => {
+  const items = getHistory();
   const filtered = items.filter(item => item.id !== id);
-  safeStorage.setItem(getHistoryKey(username), JSON.stringify(filtered));
+  safeStorage.setItem(HISTORY_KEY, JSON.stringify(filtered));
   return filtered;
 };
 
-export const togglePinHistory = (id: string, username: string | null): HistoryItem[] => {
-  const items = getHistory(username);
+export const togglePinHistory = (id: string): HistoryItem[] => {
+  const items = getHistory();
   const updated = items.map(item => {
     if (item.id === id) {
       return { ...item, isPinned: !item.isPinned };
     }
     return item;
   });
-  safeStorage.setItem(getHistoryKey(username), JSON.stringify(updated));
+  safeStorage.setItem(HISTORY_KEY, JSON.stringify(updated));
   return updated.sort((a, b) => b.lastOpened - a.lastOpened);
 };
 
-export const mergeAnonymousHistory = (username: string): void => {
-  const anon = getHistory(null);
-  if (anon.length === 0) return;
-  
-  const userItems = getHistory(username);
-  
-  anon.forEach(anonItem => {
-    const exists = userItems.some(userItem => userItem.fileName === anonItem.fileName);
-    if (!exists) {
-      userItems.push(anonItem);
+export const migrateLegacyHistory = (): HistoryItem[] => {
+  const mergedMap = new Map<string, HistoryItem>();
+
+  // 1. Process legacy entries in safeStorage (or localStorage)
+  try {
+    const storage = typeof window !== 'undefined' ? window.localStorage : null;
+    const allKeys: string[] = [];
+    
+    if (storage) {
+      for (let i = 0; i < storage.length; i++) {
+        const key = storage.key(i);
+        if (key && key.startsWith('mdreader-history-')) {
+          allKeys.push(key);
+        }
+      }
     }
-  });
-  
-  safeStorage.setItem(getHistoryKey(username), JSON.stringify(userItems.sort((a, b) => b.lastOpened - a.lastOpened)));
-  safeStorage.removeItem(getHistoryKey(null)); // Изчистваме анонимната след сливане
+
+    // Sort keys to parse 'anonymous' first, then users so user records take preference
+    allKeys.sort((a, b) => {
+      if (a.includes('anonymous')) return -1;
+      if (b.includes('anonymous')) return 1;
+      return 0;
+    });
+
+    for (const key of allKeys) {
+      try {
+        const raw = safeStorage.getItem(key);
+        if (raw) {
+          const items = JSON.parse(raw);
+          if (Array.isArray(items)) {
+            for (const item of items) {
+              const existing = mergedMap.get(item.fileName);
+              if (!existing || item.lastOpened > existing.lastOpened) {
+                mergedMap.set(item.fileName, item);
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.error(`Failed to parse legacy key ${key}`, e);
+      }
+    }
+
+    // 2. Also load any existing unified history if any
+    const existingUnified = getHistory();
+    for (const item of existingUnified) {
+      const existing = mergedMap.get(item.fileName);
+      if (!existing || item.lastOpened > existing.lastOpened) {
+        mergedMap.set(item.fileName, item);
+      }
+    }
+
+    // 3. Write unified list back
+    const sortedMerged = Array.from(mergedMap.values()).sort((a, b) => b.lastOpened - a.lastOpened);
+    if (sortedMerged.length > 0) {
+      safeStorage.setItem(HISTORY_KEY, JSON.stringify(sortedMerged));
+    }
+
+    // 4. Safely clean up old keys
+    for (const key of allKeys) {
+      safeStorage.removeItem(key);
+    }
+    safeStorage.removeItem('jellyfin-token');
+    safeStorage.removeItem('jellyfin-username');
+
+    return sortedMerged;
+  } catch (e) {
+    console.error('Migration failed, fallback to direct history load', e);
+    return getHistory();
+  }
 };

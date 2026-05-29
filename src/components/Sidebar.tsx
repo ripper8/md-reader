@@ -35,7 +35,7 @@ function parseHeadings(md: string): HeadingItem[] {
 }
 
 function calcStats(content: string) {
-  const text = content.replace(/```[\s\S]*?```/g, '').replace(/[#*_`~>\[\]]/g, '')
+  const text = content.replace(/```[\s\S]*?```/g, '').replace(/[#*_`~>[\]]/g, '')
   const words = text.trim() === '' ? 0 : text.trim().split(/\s+/).length
   const chars = content.length
   const readMin = Math.max(1, Math.ceil(words / 200))

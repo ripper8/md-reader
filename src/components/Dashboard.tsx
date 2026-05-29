@@ -1,10 +1,9 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { FileText, FolderOpen, FilePlus, Pin, Trash2, Search, Sparkles } from 'lucide-react'
 import type { HistoryItem } from '../utils/history'
 
 interface DashboardProps {
   history: HistoryItem[]
-  username: string | null
   onOpenFile: () => void
   onNewFile: () => void
   onSelectFile: (content: string, fileName: string) => void
@@ -14,13 +13,18 @@ interface DashboardProps {
 
 export default function Dashboard({
   history,
-  username,
   onOpenFile,
   onNewFile,
   onSelectFile,
   onDeleteFile,
   onTogglePin,
 }: DashboardProps) {
+  const [now, setNow] = useState(() => Date.now())
+
+  useEffect(() => {
+    const timer = setInterval(() => setNow(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [])
   const [searchQuery, setSearchQuery] = useState('')
 
   const formatSize = (bytes: number): string => {
@@ -31,8 +35,8 @@ export default function Dashboard({
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i]
   }
 
-  const formatRelativeTime = (timestamp: number): string => {
-    const diff = Date.now() - timestamp
+  const formatRelativeTime = (timestamp: number, nowVal: number): string => {
+    const diff = nowVal - timestamp
     const mins = Math.floor(diff / 60000)
     const hours = Math.floor(diff / 3600000)
     const days = Math.floor(diff / 86400000)
@@ -66,19 +70,13 @@ export default function Dashboard({
           <div className="dashboard-welcome">
             <div className="dashboard-title-area">
               <span className="dashboard-welcome-label">
-                {username ? 'Персонална библиотека' : 'Локална библиотека'}
+                Локална библиотека
               </span>
               <h1>
-                Радваме се да Ви видим,{' '}
-                <span style={{ color: 'var(--accent)' }}>
-                  {username ?? 'гост'}
-                </span>
-                !
+                Радваме се да Ви видим!
               </h1>
               <p className="dashboard-welcome-sub">
-                {username
-                  ? `Разглеждате Вашите документи, синхронизирани с профил ${username}.`
-                  : 'Вашата лична история на документите се съхранява сигурно във Вашия браузър.'}
+                Вашата лична история на документите се съхранява сигурно във Вашия браузър.
               </p>
             </div>
 
@@ -141,7 +139,7 @@ export default function Dashboard({
                           <div>
                             <span className="dashboard-item-name">{item.fileName}</span>
                             <div className="dashboard-item-meta">
-                              {formatSize(item.sizeBytes)} • отворен {formatRelativeTime(item.lastOpened)}
+                              {formatSize(item.sizeBytes)} • отворен {formatRelativeTime(item.lastOpened, now)}
                             </div>
                           </div>
                         </div>
@@ -189,7 +187,7 @@ export default function Dashboard({
                           <div>
                             <span className="dashboard-item-name">{item.fileName}</span>
                             <div className="dashboard-item-meta">
-                              {formatSize(item.sizeBytes)} • отворен {formatRelativeTime(item.lastOpened)}
+                              {formatSize(item.sizeBytes)} • отворен {formatRelativeTime(item.lastOpened, now)}
                             </div>
                           </div>
                         </div>

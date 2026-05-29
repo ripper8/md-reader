@@ -8,14 +8,16 @@
   const pathParts = window.location.pathname.split('/');
   const fileName = decodeURIComponent(pathParts[pathParts.length - 1] || 'document.md');
 
-  // 3. Clear the document head and body to prepare for our iframe.
-  document.documentElement.innerHTML = '';
+  // 3. Clear only the body to prepare for our iframe. 
+  // Wiping document.documentElement breaks Chrome's internal security origin context for file:/// URLs.
+  if (document.body) {
+    document.body.innerHTML = '';
+  }
 
-  // 4. Create head element and add basic document styles to prevent scrolling or margins.
-  const head = document.createElement('head');
-  const title = document.createElement('title');
-  title.textContent = `MDReader - ${fileName}`;
-  
+  // 4. Update the title of the document.
+  document.title = `MDReader - ${fileName}`;
+
+  // 5. Add custom styling to prevent scrolling or margins on body and HTML.
   const style = document.createElement('style');
   style.textContent = `
     html, body {
@@ -33,18 +35,12 @@
       display: block !important;
     }
   `;
-  head.appendChild(title);
-  head.appendChild(style);
-  document.documentElement.appendChild(head);
-
-  // 5. Create body element.
-  const body = document.createElement('body');
-  document.documentElement.appendChild(body);
+  document.head.appendChild(style);
 
   // 6. Create the fullscreen iframe pointing to our extension index.html.
   const iframe = document.createElement('iframe');
   iframe.src = chrome.runtime.getURL('index.html');
-  body.appendChild(iframe);
+  document.body.appendChild(iframe);
 
   // 7. Pass the raw markdown text and filename to our React app inside the iframe once it's ready.
   window.addEventListener('message', (event) => {

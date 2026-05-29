@@ -5,15 +5,13 @@ import type { ViewMode } from './types'
 import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import Preview from './components/Preview'
-import Login from './components/Login'
 import Dashboard from './components/Dashboard'
 import { parseMarkdown } from './utils/markdown'
 import {
-  getHistory,
   saveToHistory,
   removeFromHistory,
   togglePinHistory,
-  mergeAnonymousHistory
+  migrateLegacyHistory
 } from './utils/history'
 import type { HistoryItem } from './utils/history'
 import { safeStorage } from './utils/storage'
@@ -55,10 +53,6 @@ function greet(name: string): string {
 | Preview | ✅ Done |
 `
 
-interface FileHandleRef {
-  handle: FileSystemFileHandle | null
-}
-
 function useTheme() {
   const [isDark, setIsDark] = useState(() => {
     const saved = safeStorage.getItem('md-theme')
@@ -78,48 +72,24 @@ function useTheme() {
 
 export default function App() {
   const { isDark, toggle: toggleTheme } = useTheme()
-  const [jellyfinUser, setJellyfinUser] = useState<string | null>(() => {
-    return safeStorage.getItem('jellyfin-username')
-  })
   const [history, setHistory] = useState<HistoryItem[]>(() => {
-    return getHistory(safeStorage.getItem('jellyfin-username'))
+    return migrateLegacyHistory()
   })
-  const [isLoginOpen, setIsLoginOpen] = useState(false)
-
-  // Update history list when the active user changes
-  useEffect(() => {
-    setHistory(getHistory(jellyfinUser))
-  }, [jellyfinUser])
-
-  const handleLoginSuccess = (token: string, username: string) => {
-    // Merge anonymous history entries into the user's history
-    mergeAnonymousHistory(username)
-    
-    safeStorage.setItem('jellyfin-token', token)
-    safeStorage.setItem('jellyfin-username', username)
-    setJellyfinUser(username)
-  }
-
-  const handleLogout = () => {
-    safeStorage.removeItem('jellyfin-token')
-    safeStorage.removeItem('jellyfin-username')
-    setJellyfinUser(null)
-  }
 
   const handleSelectHistoryFile = (fileContent: string, name: string) => {
-    fileHandleRef.current.handle = null
+    fileHandleRef.current = null
     setContent(fileContent)
     setFileName(name)
     setIsModified(false)
   }
 
   const handleDeleteHistoryFile = (id: string) => {
-    const updated = removeFromHistory(id, jellyfinUser)
+    const updated = removeFromHistory(id)
     setHistory(updated)
   }
 
   const handleTogglePinHistory = (id: string) => {
-    const updated = togglePinHistory(id, jellyfinUser)
+    const updated = togglePinHistory(id)
     setHistory(updated)
   }
 
@@ -154,15 +124,15 @@ export default function App() {
     if (!isModified || !fileName || content.trim() === '') return
 
     const timer = setTimeout(() => {
-      const updated = saveToHistory(fileName, content, jellyfinUser)
+      const updated = saveToHistory(fileName, content)
       setHistory(updated)
       setIsModified(false)
     }, 3000)
 
     return () => clearTimeout(timer)
-  }, [content, fileName, isModified, jellyfinUser])
+  }, [content, fileName, isModified])
 
-  const fileHandleRef = useRef<FileHandleRef>({ handle: null })
+  const fileHandleRef = useRef<FileSystemFileHandle | null>(null)
   const resizerRef = useRef<HTMLDivElement>(null)
   const editorPaneRef = useRef<HTMLDivElement>(null)
   const previewPaneRef = useRef<HTMLDivElement>(null)
@@ -202,27 +172,12 @@ export default function App() {
       })
       const file: File = await handle.getFile()
       const text = await file.text()
-      fileHandleRef.current.handle = handle
+      fileHandleRef.current = handle
       setContent(text)
       setFileName(file.name)
       setIsModified(false)
     } catch { /* User cancelled */ }
   }, [])
-
-  const handleSave = useCallback(async () => {
-    if (!fileHandleRef.current.handle) {
-      await handleSaveAs()
-      return
-    }
-    try {
-      const writable = await (fileHandleRef.current.handle as any).createWritable()
-      await writable.write(content)
-      await writable.close()
-      setIsModified(false)
-    } catch (e) {
-      console.error('Save failed', e)
-    }
-  }, [content])
 
   const handleSaveAs = useCallback(async () => {
     try {
@@ -233,15 +188,30 @@ export default function App() {
       const writable = await handle.createWritable()
       await writable.write(content)
       await writable.close()
-      fileHandleRef.current.handle = handle
+      fileHandleRef.current = handle
       const file: File = await handle.getFile()
       setFileName(file.name)
       setIsModified(false)
     } catch { /* User cancelled */ }
   }, [content, fileName])
 
+  const handleSave = useCallback(async () => {
+    if (!fileHandleRef.current) {
+      await handleSaveAs()
+      return
+    }
+    try {
+      const writable = await (fileHandleRef.current as any).createWritable()
+      await writable.write(content)
+      await writable.close()
+      setIsModified(false)
+    } catch (e) {
+      console.error('Save failed', e)
+    }
+  }, [content, handleSaveAs])
+
   const handleNew = useCallback(() => {
-    fileHandleRef.current.handle = null
+    fileHandleRef.current = null
     setContent('')
     setFileName('untitled.md')
     setIsModified(false)
@@ -334,7 +304,7 @@ ${parseMarkdown(content)}
     const file = e.dataTransfer.files[0]
     if (!file || !file.name.match(/\.(md|markdown|mdx)$/i)) return
     const text = await file.text()
-    fileHandleRef.current.handle = null
+    fileHandleRef.current = null
     setContent(text)
     setFileName(file.name)
     setIsModified(false)
@@ -420,25 +390,20 @@ ${parseMarkdown(content)}
         isDark={isDark}
         viewMode={viewMode}
         hasSidebar={hasSidebar}
-        username={jellyfinUser}
         onOpen={handleOpen}
         onSave={handleSave}
-        onSaveAs={handleSaveAs}
         onNew={handleNew}
         onToggleTheme={toggleTheme}
         onViewMode={setViewMode}
         onToggleSidebar={() => setHasSidebar(s => !s)}
         onExportHtml={handleExportHtml}
         onPrint={handlePrint}
-        onLogout={handleLogout}
-        onOpenLogin={() => setIsLoginOpen(true)}
       />
       <div className="app-body">
         {hasSidebar && !showDashboard && <Sidebar content={content} activeHeading={activeHeading} />}
         {showDashboard ? (
           <Dashboard
             history={history}
-            username={jellyfinUser}
             onOpenFile={handleOpen}
             onNewFile={handleNew}
             onSelectFile={handleSelectHistoryFile}
@@ -483,14 +448,6 @@ ${parseMarkdown(content)}
           <div className="drag-overlay-subtext">Supports .md, .markdown, and .mdx</div>
         </div>
       </div>
-
-      {/* Login Modal Overlay */}
-      {isLoginOpen && (
-        <Login
-          onLoginSuccess={handleLoginSuccess}
-          onClose={() => setIsLoginOpen(false)}
-        />
-      )}
     </div>
   )
 }

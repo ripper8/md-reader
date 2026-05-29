@@ -85,7 +85,7 @@ const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick 
     return () => {
       isMounted = false
     }
-  }, [html, isDark, viewMode])
+  }, [html, isDark, viewMode, onDiagramClick])
 
   return (
     <div
