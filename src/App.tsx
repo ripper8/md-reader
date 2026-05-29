@@ -392,7 +392,6 @@ ${parseMarkdown(content)}
         hasSidebar={hasSidebar}
         onOpen={handleOpen}
         onSave={handleSave}
-        onSaveAs={handleSaveAs}
         onNew={handleNew}
         onToggleTheme={toggleTheme}
         onViewMode={setViewMode}

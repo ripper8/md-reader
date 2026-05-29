@@ -4,7 +4,7 @@ import type { HistoryItem } from '../utils/history'
 
 interface DashboardProps {
   history: HistoryItem[]
-  username: string | null
+  username?: string | null
   onOpenFile: () => void
   onNewFile: () => void
   onSelectFile: (content: string, fileName: string) => void
