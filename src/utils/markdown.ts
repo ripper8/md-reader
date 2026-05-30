@@ -89,3 +89,59 @@ markedInstance.use({ renderer, extensions: [blockMath, inlineMath] })
 export function parseMarkdown(content: string): string {
   return markedInstance.parse(content) as string
 }
+
+export function translateLatexToMarkdown(tex: string): string {
+  let md = tex;
+
+  // 1. Remove preamble: everything before \begin{document}
+  const docBeginIndex = md.indexOf('\\begin{document}');
+  if (docBeginIndex !== -1) {
+    md = md.substring(docBeginIndex + '\\begin{document}'.length);
+  }
+
+  // 2. Remove document ending
+  md = md.replace(/\\end\{document\}[\s\S]*/g, '');
+
+  // 3. Remove standard preamble commands
+  md = md.replace(/\\maketitle/g, '');
+  md = md.replace(/\\tableofcontents/g, '');
+
+  // 4. Translate sections
+  md = md.replace(/\\section\*?\{([^}]+)\}/g, '# $1');
+  md = md.replace(/\\subsection\*?\{([^}]+)\}/g, '## $1');
+  md = md.replace(/\\subsubsection\*?\{([^}]+)\}/g, '### $1');
+  md = md.replace(/\\paragraph\*?\{([^}]+)\}/g, '#### $1');
+
+  // 5. Translate text styles
+  md = md.replace(/\\textbf\{([^}]+)\}/g, '**$1**');
+  md = md.replace(/\\textit\{([^}]+)\}/g, '*$1*');
+  md = md.replace(/\\emph\{([^}]+)\}/g, '*$1*');
+  md = md.replace(/\\texttt\{([^}]+)\}/g, '`$1`');
+
+  // 6. Translate links
+  md = md.replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '[$2]($1)');
+  md = md.replace(/\\url\{([^}]+)\}/g, '[$1]($1)');
+
+  // 7. Translate Lists
+  md = md.replace(/\\begin\{(itemize|enumerate)\}/g, '');
+  md = md.replace(/\\end\{(itemize|enumerate)\}/g, '');
+  md = md.replace(/\\item\s+/g, '- ');
+
+  // 8. Handle common environments
+  md = md.replace(/\\begin\{quote\}/g, '> ');
+  md = md.replace(/\\end\{quote\}/g, '');
+  md = md.replace(/\\begin\{center\}/g, '<div style="text-align: center;">');
+  md = md.replace(/\\end\{center\}/g, '</div>');
+  md = md.replace(/\\begin\{verbatim\}/g, '```');
+  md = md.replace(/\\end\{verbatim\}/g, '```');
+
+  // 9. Convert LaTeX delimiters \[ ... \] and \( ... \) to $$ and $
+  md = md.replace(/\\\[([\s\S]+?)\\\]/g, '$$$$$1$$$$');
+  md = md.replace(/\\\(([\s\S]+?)\\\)/g, '$$$1$$');
+
+  // 10. Clean up comments starting with unescaped %
+  md = md.split('\n').map(line => line.replace(/(?<!\\)%.*/g, '')).join('\n');
+  md = md.replace(/\\%/g, '%');
+
+  return md;
+}
