@@ -28,8 +28,8 @@ test('translates LaTeX sections, text styles, and lists', () => {
   `
   const result = translateLatexToMarkdown(latex)
   assert.match(result, /# Introduction/)
-  assert.match(result, /\*\*bold\*\*/)
-  assert.match(result, /\*italic\*/)
+  assert.match(result, /<strong>bold<\/strong>/)
+  assert.match(result, /<em>italic<\/em>/)
   assert.match(result, /- First item/)
 });
 
@@ -85,14 +85,15 @@ test('translates custom resume commands and strips preamble', () => {
   assert.doesNotMatch(result, /\\newcommand/)
   
   // Verify custom resume commands translated
-  assert.match(result, /\*\*Atanas Dimitrov\*\*/)
-  assert.match(result, /-\s+\*\*Senior Software Engineer\*\*/)
-  assert.match(result, /\*UniCredit Bulbank\* \| Sofia, Bulgaria \| 2024 -- Present/)
+  assert.match(result, /<strong>Atanas Dimitrov<\/strong>/)
+  assert.match(result, /<div class="resume-subheading-list">/)
+  assert.match(result, /<div class="resume-subheading">/)
+  assert.match(result, /<span class="resume-title">Senior Software Engineer<\/span>/)
+  assert.match(result, /<span class="resume-date">2024 -- Present<\/span>/)
+  assert.match(result, /<span class="resume-company">UniCredit Bulbank<\/span>/)
+  assert.match(result, /<span class="resume-location">Sofia, Bulgaria<\/span>/)
+  assert.match(result, /<ul>\s*<li>Developed new features<\/li>\s*<\/ul>/)
   
-  // Verify list indentation is not code block (not starting with 4 spaces)
-  assert.match(result, /[ ]{2}-\s+Developed new features/)
-  assert.doesNotMatch(result, /[ ]{4,}-\s+Developed new features/)
-
   // Verify single newlines joined while \\ is preserved
   assert.match(result, /test@test\.com\s*\|\s*\n\s*\+359 878 984 499/)
 });

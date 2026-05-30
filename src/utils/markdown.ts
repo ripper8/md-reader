@@ -134,30 +134,36 @@ export function translateLatexToMarkdown(tex: string): string {
 
   // 6. Custom Resume/CV command translations using brace-matching for nested safety
   md = replaceCommandWithBraceMatching(md, 'resumeSubheading', (p1, p2, p3, p4) => {
-    let res = `- **${p1.trim()}**`;
-    const details = [];
-    if (p3.trim()) details.push(`*${p3.trim()}*`);
-    if (p4.trim()) details.push(p4.trim());
-    if (p2.trim()) details.push(p2.trim());
-    if (details.length > 0) {
-      res += `\n  ${details.join(' | ')}`;
-    }
-    return res;
+    return `<div class="resume-subheading">
+  <div class="resume-row">
+    <span class="resume-title">${p1.trim()}</span>
+    <span class="resume-date">${p2.trim()}</span>
+  </div>
+  <div class="resume-row">
+    <span class="resume-company">${p3.trim()}</span>
+    <span class="resume-location">${p4.trim()}</span>
+  </div>
+</div>\n`;
   }, 4);
 
   md = replaceCommandWithBraceMatching(md, 'resumeProjectHeading', (p1, p2) => {
-    let res = `- **${p1.trim()}**`;
-    if (p2.trim()) res += ` — *${p2.trim()}*`;
-    return res;
+    return `<div class="resume-subheading">
+  <div class="resume-row">
+    <span class="resume-title">${p1.trim()}</span>
+    <span class="resume-date">${p2.trim()}</span>
+  </div>
+</div>\n`;
   }, 2);
 
-  md = replaceCommandWithBraceMatching(md, 'resumeItem', (desc) => '  - ' + desc, 1);
+  md = replaceCommandWithBraceMatching(md, 'resumeItem', (desc) => {
+    return `<li>${desc.trim()}</li>`;
+  }, 1);
 
-  // Strip resume list wrappers
-  md = md.replace(/\\resumeSubHeadingListStart\b/g, '');
-  md = md.replace(/\\resumeSubHeadingListEnd\b/g, '');
-  md = md.replace(/\\resumeItemListStart\b/g, '');
-  md = md.replace(/\\resumeItemListEnd\b/g, '');
+  // Strip resume list wrappers or translate them into HTML lists
+  md = md.replace(/\\resumeSubHeadingListStart\b/g, '<div class="resume-subheading-list">');
+  md = md.replace(/\\resumeSubHeadingListEnd\b/g, '</div>');
+  md = md.replace(/\\resumeItemListStart\b/g, '<ul>');
+  md = md.replace(/\\resumeItemListEnd\b/g, '</ul>');
 
   // 7. Translate sections using brace-matching
   md = replaceCommandWithBraceMatching(md, 'section', (title) => '# ' + title, 1);
@@ -166,11 +172,11 @@ export function translateLatexToMarkdown(tex: string): string {
   md = replaceCommandWithBraceMatching(md, 'paragraph', (title) => '#### ' + title, 1);
 
   // 8. Translate text styles using brace-matching (safe for nested styles)
-  md = replaceCommandWithBraceMatching(md, 'textbf', (text) => '**' + text.trim() + '**', 1);
-  md = replaceCommandWithBraceMatching(md, 'textb', (text) => '**' + text.trim() + '**', 1);
-  md = replaceCommandWithBraceMatching(md, 'textit', (text) => '*' + text.trim() + '*', 1);
-  md = replaceCommandWithBraceMatching(md, 'emph', (text) => '*' + text.trim() + '*', 1);
-  md = replaceCommandWithBraceMatching(md, 'texttt', (text) => '`' + text.trim() + '`', 1);
+  md = replaceCommandWithBraceMatching(md, 'textbf', (text) => '<strong>' + text.trim() + '</strong>', 1);
+  md = replaceCommandWithBraceMatching(md, 'textb', (text) => '<strong>' + text.trim() + '</strong>', 1);
+  md = replaceCommandWithBraceMatching(md, 'textit', (text) => '<em>' + text.trim() + '</em>', 1);
+  md = replaceCommandWithBraceMatching(md, 'emph', (text) => '<em>' + text.trim() + '</em>', 1);
+  md = replaceCommandWithBraceMatching(md, 'texttt', (text) => '<code>' + text.trim() + '</code>', 1);
 
   // 9. Strip formatting sizing / scshape / vspace commands (and trailing spaces)
   md = md.replace(/\\vspace\*?\{[^}]*\}/g, '');
@@ -204,6 +210,21 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\end\{verbatim\}/g, '```');
   md = md.replace(/\\begin\{tabular\*?\}(?:\{[^}]*\})?/g, '');
   md = md.replace(/\\end\{tabular\*?\}/g, '');
+
+  // Handle \centerline{...}
+  md = replaceCommandWithBraceMatching(md, 'centerline', (text) => `<div class="center-text">${text}</div>`, 1);
+
+  // Handle \centering
+  if (md.includes('\\centering')) {
+    md = md.replace(/\\centering\s*/g, '<div class="center-text">\n\n');
+    // We close the div before the first section or list or subheading list
+    const firstStop = md.search(/\\section|\\resumeSubHeadingListStart|\\begin\{(itemize|enumerate)\}/);
+    if (firstStop !== -1) {
+      md = md.substring(0, firstStop) + '\n\n</div>\n\n' + md.substring(firstStop);
+    } else {
+      md = md + '\n\n</div>';
+    }
+  }
 
   // 13. Convert LaTeX delimiters \[ ... \] and \( ... \) to $$ and $
   md = md.replace(/\\\[([\s\S]+?)\\\]/g, '$$$$$1$$$$');
