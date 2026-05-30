@@ -3,6 +3,8 @@ import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { EditorState } from '@codemirror/state'
 import { useState, useEffect, useCallback } from 'react'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
+import { tags as t } from '@lezer/highlight'
 
 interface EditorProps {
   value: string
@@ -62,6 +64,80 @@ const editorStyle = EditorView.theme({
   },
 })
 
+// Custom High-Contrast Highlight Style for LaTeX and Markdown (Light Theme - Overleaf-like)
+const customHighlightStyle = HighlightStyle.define([
+  // Comments (green, italic)
+  { tag: t.comment, color: '#008800', fontStyle: 'italic' },
+  
+  // LaTeX control sequences / commands (like \documentclass, \usepackage) - beautiful deep blue
+  { tag: t.macroName, color: '#0000ee', fontWeight: 'bold' },
+  { tag: t.keyword, color: '#0000ee', fontWeight: 'bold' },
+  { tag: t.function(t.variableName), color: '#0000ee' },
+  
+  // LaTeX/Markdown brackets, braces, delimiters - elegant dark slate
+  { tag: t.brace, color: '#2b2b2b', fontWeight: 'bold' },
+  { tag: t.bracket, color: '#2b2b2b', fontWeight: 'bold' },
+  { tag: t.squareBracket, color: '#2b2b2b', fontWeight: 'bold' },
+  { tag: t.punctuation, color: '#2b2b2b' },
+  
+  // Arguments/strings inside braces - dark black
+  { tag: t.string, color: '#000000' },
+  { tag: t.content, color: '#000000' },
+  
+  // Key-value options inside [ ] brackets (like letterpaper, 11pt) - beautiful red/brown
+  { tag: t.propertyName, color: '#b91c1c' },
+  { tag: t.modifier, color: '#b91c1c' },
+  
+  // Math blocks (inline/block) - gorgeous purple
+  { tag: t.special(t.string), color: '#7c3aed', fontStyle: 'italic' },
+  
+  // Markdown elements
+  { tag: t.heading1, color: '#0f172a', fontWeight: 'bold', fontSize: '1.4em' },
+  { tag: t.heading2, color: '#0f172a', fontWeight: 'bold', fontSize: '1.2em' },
+  { tag: t.heading3, color: '#1e293b', fontWeight: 'bold', fontSize: '1.1em' },
+  { tag: t.strong, fontWeight: 'bold', color: '#0f172a' },
+  { tag: t.emphasis, fontStyle: 'italic', color: '#334155' },
+  { tag: t.link, color: '#10b981', textDecoration: 'underline' },
+  { tag: t.url, color: '#10b981' },
+])
+
+// Custom High-Contrast Highlight Style for LaTeX and Markdown (Dark Theme)
+const customDarkHighlightStyle = HighlightStyle.define([
+  // Comments (mint green, italic)
+  { tag: t.comment, color: '#10b981', fontStyle: 'italic' },
+  
+  // LaTeX control sequences / commands - vibrant sky blue / purple
+  { tag: t.macroName, color: '#60a5fa', fontWeight: 'bold' },
+  { tag: t.keyword, color: '#a78bfa', fontWeight: 'bold' },
+  { tag: t.function(t.variableName), color: '#60a5fa' },
+  
+  // LaTeX/Markdown brackets, braces, delimiters - soft grey
+  { tag: t.brace, color: '#9ca3af', fontWeight: 'bold' },
+  { tag: t.bracket, color: '#9ca3af', fontWeight: 'bold' },
+  { tag: t.squareBracket, color: '#9ca3af', fontWeight: 'bold' },
+  { tag: t.punctuation, color: '#cbd5e1' },
+  
+  // Arguments/strings inside braces - bright white/light grey
+  { tag: t.string, color: '#f3f4f6' },
+  { tag: t.content, color: '#f3f4f6' },
+  
+  // Options/Properties inside square brackets [...] - bright orange/yellow
+  { tag: t.propertyName, color: '#f97316' },
+  { tag: t.modifier, color: '#f97316' },
+  
+  // Math blocks - gorgeous violet
+  { tag: t.special(t.string), color: '#d8b4fe', fontStyle: 'italic' },
+  
+  // Markdown elements
+  { tag: t.heading1, color: '#f9fafb', fontWeight: 'bold', fontSize: '1.4em' },
+  { tag: t.heading2, color: '#f9fafb', fontWeight: 'bold', fontSize: '1.2em' },
+  { tag: t.heading3, color: '#f3f4f6', fontWeight: 'bold', fontSize: '1.1em' },
+  { tag: t.strong, fontWeight: 'bold', color: '#ffffff' },
+  { tag: t.emphasis, fontStyle: 'italic', color: '#e5e7eb' },
+  { tag: t.link, color: '#34d399', textDecoration: 'underline' },
+  { tag: t.url, color: '#34d399' },
+])
+
 export default function Editor({ value, onChange, onScroll, isDark, fileName }: EditorProps) {
   const [langExtension, setLangExtension] = useState<any[]>([])
 
@@ -103,6 +179,7 @@ export default function Editor({ value, onChange, onScroll, isDark, fileName }: 
       theme={isDark ? [darkTheme, editorStyle] : [lightTheme, editorStyle]}
       extensions={[
         ...langExtension,
+        syntaxHighlighting(isDark ? customDarkHighlightStyle : customHighlightStyle),
         EditorState.tabSize.of(2),
         EditorView.lineWrapping,
         scrollListener(),
