@@ -1317,6 +1317,9 @@ body {
    ========================================================================== */
 
 .md-preview.latex-document-theme {
+  --text-primary: #000000 !important;
+  --text-secondary: #2b2b2b !important;
+  --text-muted: #555555 !important;
   max-width: 820px;
   margin: 20px auto;
   padding: 45px 55px;
