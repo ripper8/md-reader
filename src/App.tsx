@@ -15,6 +15,7 @@ import {
 } from './utils/history'
 import type { HistoryItem } from './utils/history'
 import { safeStorage } from './utils/storage'
+import { extractTextFromPdf } from './utils/pdf'
 import './index.css'
 
 const DEFAULT_CONTENT = `# Welcome to MDReader 👋
@@ -72,6 +73,7 @@ function useTheme() {
 
 export default function App() {
   const { isDark, toggle: toggleTheme } = useTheme()
+  const [isExtractingPdf, setIsExtractingPdf] = useState(false)
   const [history, setHistory] = useState<HistoryItem[]>(() => {
     return migrateLegacyHistory()
   })
@@ -168,17 +170,42 @@ export default function App() {
     try {
       const [handle] = await (window as any).showOpenFilePicker({
         types: [
-          { description: 'All Supported Reader Files', accept: { 'text/markdown': ['.md', '.markdown', '.mdx'], 'text/x-tex': ['.tex'] } },
+          { 
+            description: 'All Supported Reader Files', 
+            accept: { 
+              'text/markdown': ['.md', '.markdown', '.mdx'], 
+              'text/x-tex': ['.tex'],
+              'application/pdf': ['.pdf']
+            } 
+          },
           { description: 'Markdown', accept: { 'text/markdown': ['.md', '.markdown', '.mdx'] } },
-          { description: 'LaTeX', accept: { 'text/x-tex': ['.tex'] } }
+          { description: 'LaTeX', accept: { 'text/x-tex': ['.tex'] } },
+          { description: 'PDF', accept: { 'application/pdf': ['.pdf'] } }
         ],
         multiple: false,
       })
       const file: File = await handle.getFile()
-      const text = await file.text()
       fileHandleRef.current = handle
-      setContent(text)
       setFileName(file.name)
+      
+      if (file.name.endsWith('.pdf')) {
+        setIsExtractingPdf(true)
+        try {
+          const buffer = await file.arrayBuffer()
+          const text = await extractTextFromPdf(buffer)
+          setContent(text)
+          const updated = saveToHistory(file.name, text)
+          setHistory(updated)
+        } catch (err) {
+          console.error("PDF text extraction failed:", err)
+          alert("Неуспешно извличане на текст от PDF файл.")
+        } finally {
+          setIsExtractingPdf(false)
+        }
+      } else {
+        const text = await file.text()
+        setContent(text)
+      }
       setIsModified(false)
     } catch { /* User cancelled */ }
   }, [])
@@ -315,11 +342,28 @@ ${parseMarkdown(parsedContent)}
     dragCounterRef.current = 0
     setIsDragOver(false)
     const file = e.dataTransfer.files[0]
-    if (!file || !file.name.match(/\.(md|markdown|mdx|tex)$/i)) return
-    const text = await file.text()
+    if (!file || !file.name.match(/\.(md|markdown|mdx|tex|pdf)$/i)) return
     fileHandleRef.current = null
-    setContent(text)
     setFileName(file.name)
+
+    if (file.name.endsWith('.pdf')) {
+      setIsExtractingPdf(true)
+      try {
+        const buffer = await file.arrayBuffer()
+        const text = await extractTextFromPdf(buffer)
+        setContent(text)
+        const updated = saveToHistory(file.name, text)
+        setHistory(updated)
+      } catch (err) {
+        console.error("PDF drag-drop extraction failed:", err)
+        alert("Неуспешно извличане на текст от PDF.")
+      } finally {
+        setIsExtractingPdf(false)
+      }
+    } else {
+      const text = await file.text()
+      setContent(text)
+    }
     setIsModified(false)
   }, [])
 
@@ -430,7 +474,15 @@ ${parseMarkdown(parsedContent)}
                 <span className="pane-header-badge">Editor</span>
               </div>
               <div className="editor-pane-content">
-                <Editor value={content} onChange={handleContentChange} onScroll={setScrollRatio} isDark={isDark} fileName={fileName} />
+                {isExtractingPdf ? (
+                  <div className="pdf-loader-container">
+                    <div className="pdf-loader-spinner"></div>
+                    <div className="pdf-loader-text">Екстрахиране на текст от PDF страници...</div>
+                    <div className="pdf-loader-subtext">Това може да отнеме няколко секунди за по-големи файлове.</div>
+                  </div>
+                ) : (
+                  <Editor value={content} onChange={handleContentChange} onScroll={setScrollRatio} isDark={isDark} fileName={fileName} />
+                )}
               </div>
             </div>
             <div className="split-resizer" ref={resizerRef} role="separator" />
@@ -448,6 +500,7 @@ ${parseMarkdown(parsedContent)}
           <FileText size={12} />
           {fileName ?? 'No file'}
           {isModified && ' (modified)'}
+          {fileName?.endsWith('.pdf') && <span className="pdf-mode-badge" style={{ marginLeft: 8, background: 'var(--accent)', color: 'var(--text-on-accent)', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 'bold' }}>PDF Режим</span>}
         </div>
         <div className="statusbar-spacer" />
         <div className="statusbar-item">UTF-8</div>
@@ -457,8 +510,8 @@ ${parseMarkdown(parsedContent)}
       <div className={`drag-overlay ${isDragOver ? 'active' : ''}`}>
         <div className="drag-overlay-box">
           <Upload size={56} className="drag-overlay-icon" />
-          <div className="drag-overlay-text">Drop your Markdown or LaTeX file</div>
-          <div className="drag-overlay-subtext">Supports .md, .markdown, .mdx, and .tex</div>
+          <div className="drag-overlay-text">Drop your Markdown, LaTeX or PDF file</div>
+          <div className="drag-overlay-subtext">Supports .md, .markdown, .mdx, .tex, and .pdf</div>
         </div>
       </div>
     </div>

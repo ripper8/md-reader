@@ -1,3 +1,4 @@
+import { useState, useRef, useEffect } from 'react'
 import type { ViewMode } from '../types'
 import {
   FolderOpen, Save, FilePlus, Sun, Moon,
@@ -35,6 +36,23 @@ export default function Toolbar({
   onExportHtml,
   onPrint,
 }: ToolbarProps) {
+  const [isExportOpen, setIsExportOpen] = useState(false)
+  const dropdownRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    const handleOutsideClick = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsExportOpen(false)
+      }
+    }
+    if (isExportOpen) {
+      document.addEventListener('mousedown', handleOutsideClick)
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick)
+    }
+  }, [isExportOpen])
+
   return (
     <header className="toolbar" role="toolbar" aria-label="Main toolbar">
       <div className="toolbar-group">
@@ -138,26 +156,43 @@ export default function Toolbar({
 
       <div className="toolbar-spacer" />
 
-      {/* Export */}
-      <div className="toolbar-group">
+      {/* Unified Export Dropdown Menu */}
+      <div className="toolbar-group dropdown-container" ref={dropdownRef}>
         <button
-          id="btn-export-html"
-          className="btn btn-ghost btn-icon"
-          onClick={onExportHtml}
-          data-tooltip="Export as HTML"
-          aria-label="Export as HTML"
+          id="btn-export-menu"
+          className={`btn btn-ghost btn-icon ${isExportOpen ? 'active' : ''}`}
+          onClick={() => setIsExportOpen(!isExportOpen)}
+          data-tooltip="Export Document"
+          aria-label="Export Document"
+          aria-expanded={isExportOpen}
         >
           <Download size={18} />
         </button>
-        <button
-          id="btn-print"
-          className="btn btn-ghost btn-icon"
-          onClick={onPrint}
-          data-tooltip="Print / Save PDF"
-          aria-label="Print"
-        >
-          <Printer size={18} />
-        </button>
+
+        {isExportOpen && (
+          <div className="toolbar-dropdown-menu fade-in">
+            <button
+              className="dropdown-item"
+              onClick={() => {
+                onExportHtml()
+                setIsExportOpen(false)
+              }}
+            >
+              <Download size={15} />
+              <span>HTML документ (.html)</span>
+            </button>
+            <button
+              className="dropdown-item"
+              onClick={() => {
+                onPrint()
+                setIsExportOpen(false)
+              }}
+            >
+              <Printer size={15} />
+              <span>PDF документ (.pdf)</span>
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="toolbar-divider" />
