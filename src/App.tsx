@@ -229,6 +229,8 @@ export default function App() {
   }, [])
 
   const handleExportHtml = useCallback(() => {
+    const isTex = fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}')
+    const parsedContent = isTex ? translateLatexToMarkdown(content) : content
     const html = `<!DOCTYPE html>
 <html lang="bg" style="color-scheme: ${isDark ? 'dark' : 'light'};">
 <head>
@@ -248,7 +250,7 @@ blockquote { border-left: 3px solid #4f46e5; margin: 0; padding: 8px 16px; backg
 </style>
 </head>
 <body>
-${parseMarkdown(content)}
+${parseMarkdown(parsedContent)}
 
 <script type="module">
   import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
@@ -411,7 +413,7 @@ ${parseMarkdown(content)}
         onPrint={handlePrint}
       />
       <div className="app-body">
-        {hasSidebar && !showDashboard && <Sidebar content={fileName?.endsWith('.tex') ? translateLatexToMarkdown(content) : content} activeHeading={activeHeading} />}
+        {hasSidebar && !showDashboard && <Sidebar content={fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}') ? translateLatexToMarkdown(content) : content} activeHeading={activeHeading} />}
         {showDashboard ? (
           <Dashboard
             history={history}

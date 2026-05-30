@@ -24,7 +24,7 @@ const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick,
 
   const html = useMemo(() => {
     try {
-      const isTex = fileName?.endsWith('.tex')
+      const isTex = fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}')
       const parsedContent = isTex ? translateLatexToMarkdown(content) : content
       return parseMarkdown(parsedContent)
     } catch {
