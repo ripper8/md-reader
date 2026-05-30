@@ -91,10 +91,14 @@ const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick,
     }
   }, [html, isDark, viewMode, onDiagramClick])
 
+  const isTex = useMemo(() => {
+    return fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}')
+  }, [content, fileName])
+
   return (
     <div
       ref={containerRef}
-      className="md-preview"
+      className={`md-preview ${isTex ? 'latex-document-theme' : ''}`}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )
