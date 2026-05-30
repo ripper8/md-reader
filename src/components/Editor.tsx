@@ -2,14 +2,14 @@ import CodeMirror, { EditorView } from '@uiw/react-codemirror'
 import { markdown, markdownLanguage } from '@codemirror/lang-markdown'
 import { languages } from '@codemirror/language-data'
 import { EditorState } from '@codemirror/state'
-import { useCallback } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 
 interface EditorProps {
   value: string
   onChange: (value: string) => void
   onScroll?: (ratio: number) => void
   isDark: boolean
-  fileName?: string | null
+  fileName: string | null
 }
 
 // Graphite & Mint Light Theme
@@ -62,7 +62,25 @@ const editorStyle = EditorView.theme({
   },
 })
 
-export default function Editor({ value, onChange, onScroll, isDark }: EditorProps) {
+export default function Editor({ value, onChange, onScroll, isDark, fileName }: EditorProps) {
+  const [langExtension, setLangExtension] = useState<any[]>([])
+
+  useEffect(() => {
+    const loadLanguage = async () => {
+      if (fileName?.endsWith('.tex')) {
+        const latexLang = languages.find(l => l.name === 'LaTeX')
+        if (latexLang) {
+          const support = await latexLang.load()
+          setLangExtension([support])
+          return
+        }
+      }
+      // Fallback to Markdown
+      setLangExtension([markdown({ base: markdownLanguage, codeLanguages: languages })])
+    }
+    loadLanguage()
+  }, [fileName])
+
   const handleScroll = useCallback((event: Event) => {
     const el = event.target as HTMLElement
     if (!el) return
@@ -84,7 +102,7 @@ export default function Editor({ value, onChange, onScroll, isDark }: EditorProp
       height="100%"
       theme={isDark ? [darkTheme, editorStyle] : [lightTheme, editorStyle]}
       extensions={[
-        markdown({ base: markdownLanguage, codeLanguages: languages }),
+        ...langExtension,
         EditorState.tabSize.of(2),
         EditorView.lineWrapping,
         scrollListener(),
