@@ -49,12 +49,18 @@ test('translates custom resume commands and strips preamble', () => {
   const latex = `
   \\documentclass[letterpaper,11pt]{article}
   \\usepackage[empty]{fullpage}
+  \\urlstyle{same}
+  \\raggedbottom
+  \\raggedright
+  \\titleformat{\\section}{\\raggedright}{}{0em}{}[\\titlerule ]
+  \\renewcommand\\labelitemii{\\vcenter{\\hbox{\\bullet}}}
   \\newcommand{\\resumeItem}[1]{\\item\\small{#1}}
   
   \\begin{document}
   \\begin{center}
     \\textb{\\Huge \\scshape Atanas Dimitrov} \\\\
-    \\href{mailto:test@test.com}{test@test.com}
+    test@test.com | \\\\
+    +359 878 984 499
   \\end{center}
   
   \\resumeSubHeadingListStart
@@ -72,12 +78,22 @@ test('translates custom resume commands and strips preamble', () => {
   // Verify preamble stripped
   assert.doesNotMatch(result, /\\documentclass/)
   assert.doesNotMatch(result, /\\usepackage/)
+  assert.doesNotMatch(result, /\\urlstyle/)
+  assert.doesNotMatch(result, /\\raggedbottom/)
+  assert.doesNotMatch(result, /\\titleformat/)
+  assert.doesNotMatch(result, /\\renewcommand/)
   assert.doesNotMatch(result, /\\newcommand/)
   
   // Verify custom resume commands translated
   assert.match(result, /\*\*Atanas Dimitrov\*\*/)
-  assert.match(result, /\[test@test\.com\]\(mailto:test@test\.com\)/)
   assert.match(result, /-\s+\*\*Senior Software Engineer\*\*/)
   assert.match(result, /\*UniCredit Bulbank\* \| Sofia, Bulgaria \| 2024 -- Present/)
-  assert.match(result, /-\s+Developed new features/)
+  
+  // Verify list indentation is not code block (not starting with 4 spaces)
+  assert.match(result, /[ ]{2}-\s+Developed new features/)
+  assert.doesNotMatch(result, /[ ]{4,}-\s+Developed new features/)
+
+  // Verify single newlines joined while \\ is preserved
+  assert.match(result, /test@test\.com\s*\|\s*\n\s*\+359 878 984 499/)
 });
+

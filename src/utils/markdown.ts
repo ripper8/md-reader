@@ -96,7 +96,13 @@ export function translateLatexToMarkdown(tex: string): string {
   // 1. Strip out LaTeX command definitions and preamble metadata blocks robustly
   md = stripCommandDefinitions(md);
 
-  // 2. Globally remove preamble setup and package commands
+  // 2. Aggressively remove preamble before \begin{document}
+  const docBeginMatch = md.match(/\\begin\s*\{\s*document\s*\}/i);
+  if (docBeginMatch && docBeginMatch.index !== undefined) {
+    md = md.substring(docBeginMatch.index + docBeginMatch[0].length);
+  }
+
+  // 3. Globally remove preamble setup, package and document environment commands (fallbacks)
   md = md.replace(/\\documentclass(?:\[[^\]]*\])?\{[^}]*\}/g, '');
   md = md.replace(/\\usepackage(?:\[[^\]]*\])?\{[^}]*\}/g, '');
   md = md.replace(/\\input\{[^}]*\}/g, '');
@@ -112,17 +118,21 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\addtolength\{[^}]*\}\{[^}]*\}/g, '');
   md = md.replace(/\\pdfgentounicode\s*=\s*\d+/g, '');
   md = md.replace(/\\pdfgentounicode\b/g, '');
-  md = md.replace(/\\titleformat\*?\{[^}]*\}\s*\{[^}]*\}\s*\{[^}]*\}\s*\{[^}]*\}\s*\{[^}]*\}(?:\[[^\]]*\])?/g, '');
+  md = md.replace(/\\titleformat\*?(\{[^}]*\})+(\[[^\]]*\])?/g, '');
+  md = md.replace(/\\titlespacing\*?(\{[^}]*\})+/g, '');
+  md = md.replace(/\\urlstyle\{[^}]*\}/g, '');
+  md = md.replace(/\\raggedbottom\b/g, '');
+  md = md.replace(/\\raggedright\b/g, '');
 
-  // 3. Remove document environment markers globally (instead of cutting)
+  // 4. Remove document environment markers globally (if still present)
   md = md.replace(/\\begin\{document\}/g, '');
   md = md.replace(/\\end\{document\}/g, '');
 
-  // 4. Remove standard preamble commands
+  // 5. Remove standard preamble commands
   md = md.replace(/\\maketitle/g, '');
   md = md.replace(/\\tableofcontents/g, '');
 
-  // 5. Custom Resume/CV command translations
+  // 6. Custom Resume/CV command translations
   // \resumeSubheading{title}{dates}{company}{location}
   md = md.replace(/\\resumeSubheading\s*\{([^{}]*)\}\s*\{([^{}]*)\}\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_match, p1, p2, p3, p4) => {
     let res = `- **${p1.trim()}**`;
@@ -152,19 +162,19 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\resumeItemListStart\b/g, '');
   md = md.replace(/\\resumeItemListEnd\b/g, '');
 
-  // 6. Translate sections
+  // 7. Translate sections
   md = md.replace(/\\section\*?\{([^}]+)\}/g, '# $1');
   md = md.replace(/\\subsection\*?\{([^}]+)\}/g, '## $1');
   md = md.replace(/\\subsubsection\*?\{([^}]+)\}/g, '### $1');
   md = md.replace(/\\paragraph\*?\{([^}]+)\}/g, '#### $1');
 
-  // 7. Translate text styles (including bold typo \textb with whitespace trimming)
+  // 8. Translate text styles (including bold typo \textb with whitespace trimming)
   md = md.replace(/\\textb(?:f)?\{\s*([^}]+?)\s*\}/g, '**$1**');
   md = md.replace(/\\textit\{\s*([^}]+?)\s*\}/g, '*$1*');
   md = md.replace(/\\emph\{\s*([^}]+?)\s*\}/g, '*$1*');
   md = md.replace(/\\texttt\{\s*([^}]+?)\s*\}/g, '`$1`');
 
-  // 8. Strip formatting sizing / scshape / vspace commands (and trailing spaces)
+  // 9. Strip formatting sizing / scshape / vspace commands (and trailing spaces)
   md = md.replace(/\\vspace\*?\{[^}]*\}/g, '');
   md = md.replace(/\\small\{\s*([^}]+?)\s*\}/g, '$1');
   md = md.replace(/\\Huge\{\s*([^}]+?)\s*\}/g, '$1');
@@ -178,16 +188,16 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\bf\b\s*/g, '');
   md = md.replace(/\\it\b\s*/g, '');
 
-  // 9. Translate links
+  // 10. Translate links
   md = md.replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '[$2]($1)');
   md = md.replace(/\\url\{([^}]+)\}/g, '[$1]($1)');
 
-  // 10. Translate Lists
+  // 11. Translate Lists (using multiline anchors to clean leading spaces before list item bullets)
   md = md.replace(/\\begin\{(itemize|enumerate)\}/g, '');
   md = md.replace(/\\end\{(itemize|enumerate)\}/g, '');
-  md = md.replace(/\\item\s+/g, '- ');
+  md = md.replace(/^[ \t]*\\item\s+/gm, '- ');
 
-  // 11. Handle common environments
+  // 12. Handle common environments
   md = md.replace(/\\begin\{quote\}/g, '> ');
   md = md.replace(/\\end\{quote\}/g, '');
   md = md.replace(/\\begin\{center\}/g, '<div style="text-align: center;">');
@@ -197,16 +207,65 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\begin\{tabular\*?\}(?:\{[^}]*\})?/g, '');
   md = md.replace(/\\end\{tabular\*?\}/g, '');
 
-  // 12. Convert LaTeX delimiters \[ ... \] and \( ... \) to $$ and $
+  // 13. Convert LaTeX delimiters \[ ... \] and \( ... \) to $$ and $
   md = md.replace(/\\\[([\s\S]+?)\\\]/g, '$$$$$1$$$$');
   md = md.replace(/\\\(([\s\S]+?)\\\)/g, '$$$1$$');
 
-  // 13. Double backslashes to newlines and alignment character & to space
-  md = md.replace(/\\\\/g, '\n');
+  // 14. Placeholders for literal backslashes to newlines and alignment character & to space
+  md = md.replace(/\\\\/g, '___LINE_BREAK___');
   md = md.replace(/&/g, ' ');
   md = md.replace(/\\hfill\b/g, ' ');
 
-  // 14. Clean up comments starting with unescaped %
+  // 15. Normalize newlines: single newlines are treated as spaces in LaTeX (modeling LaTeX compiler newline behavior)
+  const lines = md.split('\n');
+  const processedLines: string[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const currentLine = lines[i];
+    const trimmed = currentLine.trim();
+    if (trimmed === '') {
+      processedLines.push(currentLine);
+      continue;
+    }
+
+    const isBlock = /^(?:#{1,6}\s+|-|\*|\d+\.|\s*-|\s*\*|>|```)/.test(trimmed);
+
+    if (isBlock) {
+      processedLines.push(currentLine);
+    } else {
+      const lastLineIndex = processedLines.length - 1;
+      if (lastLineIndex >= 0 && 
+          processedLines[lastLineIndex].trim() !== '' && 
+          !processedLines[lastLineIndex].endsWith('___LINE_BREAK___') &&
+          !/^(?:#{1,6}\s+|-|\*|\d+\.|\s*-|\s*\*|>|```)/.test(processedLines[lastLineIndex].trim())) {
+        processedLines[lastLineIndex] = processedLines[lastLineIndex] + ' ' + trimmed;
+      } else {
+        processedLines.push(currentLine);
+      }
+    }
+  }
+  md = processedLines.join('\n');
+
+  // Restore line breaks
+  md = md.replace(/___LINE_BREAK___/g, '\n');
+
+  // 16. Normalize leading whitespace to prevent indented code blocks (keeping code blocks intact)
+  let inCodeBlock = false;
+  md = md.split('\n').map(line => {
+    if (line.trim().startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      return line;
+    }
+    if (inCodeBlock) {
+      return line;
+    }
+    const leadingSpaces = line.match(/^([ \t]*)/)?.[0] || '';
+    if (leadingSpaces.length >= 4) {
+      return '  ' + line.trimStart();
+    }
+    return line;
+  }).join('\n');
+
+  // 17. Clean up comments starting with unescaped %
   md = md.split('\n').map(line => line.replace(/(?<!\\)%.*/g, '')).join('\n');
   md = md.replace(/\\%/g, '%');
 
@@ -215,7 +274,8 @@ export function translateLatexToMarkdown(tex: string): string {
 
 function stripCommandDefinitions(text: string): string {
   let result = text;
-  const regex = /\\(?:new|renew)command\*?\{[^{}]*\}/g;
+  // Match both \newcommand{\macroName} and \newcommand\macroName (or renewcommand)
+  const regex = /\\(?:new|renew)command\*?(?:\{[^{}]*\}|\\[a-zA-Z]+)/g;
   let match;
   while ((match = regex.exec(result)) !== null) {
     const startIndex = match.index;
