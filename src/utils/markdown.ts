@@ -102,6 +102,20 @@ export function translateLatexToMarkdown(tex: string): string {
     md = md.substring(docBeginMatch.index + docBeginMatch[0].length);
   }
 
+  // 2.5. Handle centering early while LaTeX commands are still fully intact
+  md = replaceCommandWithBraceMatching(md, 'centerline', (text) => `<div class="center-text">${text}</div>`, 1);
+
+  if (md.includes('\\centering')) {
+    md = md.replace(/\\centering\s*/g, '<div class="center-text">\n\n');
+    // We close the div before the first section or list or subheading list
+    const firstStop = md.search(/\\section|\\resumeSubHeadingListStart|\\begin\{(itemize|enumerate)\}/);
+    if (firstStop !== -1) {
+      md = md.substring(0, firstStop) + '\n\n</div>\n\n' + md.substring(firstStop);
+    } else {
+      md = md + '\n\n</div>';
+    }
+  }
+
   // 3. Globally remove preamble setup, package and document environment commands (fallbacks)
   md = md.replace(/\\documentclass(?:\[[^\]]*\])?\{[^}]*\}/g, '');
   md = md.replace(/\\usepackage(?:\[[^\]]*\])?\{[^}]*\}/g, '');
@@ -210,21 +224,6 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\end\{verbatim\}/g, '```');
   md = md.replace(/\\begin\{tabular\*?\}(?:\{[^}]*\})?/g, '');
   md = md.replace(/\\end\{tabular\*?\}/g, '');
-
-  // Handle \centerline{...}
-  md = replaceCommandWithBraceMatching(md, 'centerline', (text) => `<div class="center-text">${text}</div>`, 1);
-
-  // Handle \centering
-  if (md.includes('\\centering')) {
-    md = md.replace(/\\centering\s*/g, '<div class="center-text">\n\n');
-    // We close the div before the first section or list or subheading list
-    const firstStop = md.search(/\\section|\\resumeSubHeadingListStart|\\begin\{(itemize|enumerate)\}/);
-    if (firstStop !== -1) {
-      md = md.substring(0, firstStop) + '\n\n</div>\n\n' + md.substring(firstStop);
-    } else {
-      md = md + '\n\n</div>';
-    }
-  }
 
   // 13. Convert LaTeX delimiters \[ ... \] and \( ... \) to $$ and $
   md = md.replace(/\\\[([\s\S]+?)\\\]/g, '$$$$$1$$$$');
