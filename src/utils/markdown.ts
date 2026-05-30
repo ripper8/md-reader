@@ -132,9 +132,8 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\maketitle/g, '');
   md = md.replace(/\\tableofcontents/g, '');
 
-  // 6. Custom Resume/CV command translations
-  // \resumeSubheading{title}{dates}{company}{location}
-  md = md.replace(/\\resumeSubheading\s*\{([^{}]*)\}\s*\{([^{}]*)\}\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_match, p1, p2, p3, p4) => {
+  // 6. Custom Resume/CV command translations using brace-matching for nested safety
+  md = replaceCommandWithBraceMatching(md, 'resumeSubheading', (p1, p2, p3, p4) => {
     let res = `- **${p1.trim()}**`;
     const details = [];
     if (p3.trim()) details.push(`*${p3.trim()}*`);
@@ -144,17 +143,15 @@ export function translateLatexToMarkdown(tex: string): string {
       res += `\n  ${details.join(' | ')}`;
     }
     return res;
-  });
+  }, 4);
 
-  // \resumeProjectHeading{project}{role}
-  md = md.replace(/\\resumeProjectHeading\s*\{([^{}]*)\}\s*\{([^{}]*)\}/g, (_match, p1, p2) => {
+  md = replaceCommandWithBraceMatching(md, 'resumeProjectHeading', (p1, p2) => {
     let res = `- **${p1.trim()}**`;
     if (p2.trim()) res += ` — *${p2.trim()}*`;
     return res;
-  });
+  }, 2);
 
-  // \resumeItem{description}
-  md = md.replace(/\\resumeItem\s*\{([^{}]*)\}/g, '  - $1');
+  md = replaceCommandWithBraceMatching(md, 'resumeItem', (desc) => '  - ' + desc, 1);
 
   // Strip resume list wrappers
   md = md.replace(/\\resumeSubHeadingListStart\b/g, '');
@@ -162,24 +159,25 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\resumeItemListStart\b/g, '');
   md = md.replace(/\\resumeItemListEnd\b/g, '');
 
-  // 7. Translate sections
-  md = md.replace(/\\section\*?\{([^}]+)\}/g, '# $1');
-  md = md.replace(/\\subsection\*?\{([^}]+)\}/g, '## $1');
-  md = md.replace(/\\subsubsection\*?\{([^}]+)\}/g, '### $1');
-  md = md.replace(/\\paragraph\*?\{([^}]+)\}/g, '#### $1');
+  // 7. Translate sections using brace-matching
+  md = replaceCommandWithBraceMatching(md, 'section', (title) => '# ' + title, 1);
+  md = replaceCommandWithBraceMatching(md, 'subsection', (title) => '## ' + title, 1);
+  md = replaceCommandWithBraceMatching(md, 'subsubsection', (title) => '### ' + title, 1);
+  md = replaceCommandWithBraceMatching(md, 'paragraph', (title) => '#### ' + title, 1);
 
-  // 8. Translate text styles (including bold typo \textb with whitespace trimming)
-  md = md.replace(/\\textb(?:f)?\{\s*([^}]+?)\s*\}/g, '**$1**');
-  md = md.replace(/\\textit\{\s*([^}]+?)\s*\}/g, '*$1*');
-  md = md.replace(/\\emph\{\s*([^}]+?)\s*\}/g, '*$1*');
-  md = md.replace(/\\texttt\{\s*([^}]+?)\s*\}/g, '`$1`');
+  // 8. Translate text styles using brace-matching (safe for nested styles)
+  md = replaceCommandWithBraceMatching(md, 'textbf', (text) => '**' + text.trim() + '**', 1);
+  md = replaceCommandWithBraceMatching(md, 'textb', (text) => '**' + text.trim() + '**', 1);
+  md = replaceCommandWithBraceMatching(md, 'textit', (text) => '*' + text.trim() + '*', 1);
+  md = replaceCommandWithBraceMatching(md, 'emph', (text) => '*' + text.trim() + '*', 1);
+  md = replaceCommandWithBraceMatching(md, 'texttt', (text) => '`' + text.trim() + '`', 1);
 
   // 9. Strip formatting sizing / scshape / vspace commands (and trailing spaces)
   md = md.replace(/\\vspace\*?\{[^}]*\}/g, '');
-  md = md.replace(/\\small\{\s*([^}]+?)\s*\}/g, '$1');
-  md = md.replace(/\\Huge\{\s*([^}]+?)\s*\}/g, '$1');
-  md = md.replace(/\\large\{\s*([^}]+?)\s*\}/g, '$1');
-  md = md.replace(/\\tiny\{\s*([^}]+?)\s*\}/g, '$1');
+  md = replaceCommandWithBraceMatching(md, 'small', (text) => text, 1);
+  md = replaceCommandWithBraceMatching(md, 'Huge', (text) => text, 1);
+  md = replaceCommandWithBraceMatching(md, 'large', (text) => text, 1);
+  md = replaceCommandWithBraceMatching(md, 'tiny', (text) => text, 1);
   md = md.replace(/\\small\b\s*/g, '');
   md = md.replace(/\\Huge\b\s*/g, '');
   md = md.replace(/\\large\b\s*/g, '');
@@ -189,19 +187,19 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\it\b\s*/g, '');
 
   // 10. Translate links
-  md = md.replace(/\\href\{([^}]+)\}\{([^}]+)\}/g, '[$2]($1)');
-  md = md.replace(/\\url\{([^}]+)\}/g, '[$1]($1)');
+  md = replaceCommandWithBraceMatching(md, 'href', (url, text) => `[${text.trim()}](${url.trim()})`, 2);
+  md = replaceCommandWithBraceMatching(md, 'url', (url) => `[${url.trim()}](${url.trim()})`, 1);
 
   // 11. Translate Lists (using multiline anchors to clean leading spaces before list item bullets)
   md = md.replace(/\\begin\{(itemize|enumerate)\}/g, '');
   md = md.replace(/\\end\{(itemize|enumerate)\}/g, '');
   md = md.replace(/^[ \t]*\\item\s+/gm, '- ');
 
-  // 12. Handle common environments
+  // 12. Handle common environments (with standard blank lines around center divs to allow Markdown inside)
   md = md.replace(/\\begin\{quote\}/g, '> ');
   md = md.replace(/\\end\{quote\}/g, '');
-  md = md.replace(/\\begin\{center\}/g, '<div style="text-align: center;">');
-  md = md.replace(/\\end\{center\}/g, '</div>');
+  md = md.replace(/\\begin\{center\}/g, '<div class="center-text">\n\n');
+  md = md.replace(/\\end\{center\}/g, '\n\n</div>');
   md = md.replace(/\\begin\{verbatim\}/g, '```');
   md = md.replace(/\\end\{verbatim\}/g, '```');
   md = md.replace(/\\begin\{tabular\*?\}(?:\{[^}]*\})?/g, '');
@@ -270,6 +268,67 @@ export function translateLatexToMarkdown(tex: string): string {
   md = md.replace(/\\%/g, '%');
 
   return md;
+}
+
+function replaceCommandWithBraceMatching(
+  text: string,
+  commandName: string,
+  replacementFn: (...args: string[]) => string,
+  numArgs: number = 1
+): string {
+  let result = text;
+  const regex = new RegExp('\\\\' + commandName + '\\b', 'g');
+  
+  let match;
+  while ((match = regex.exec(result)) !== null) {
+    const commandStartIndex = match.index;
+    let currentIndex = commandStartIndex + match[0].length;
+    
+    const args: string[] = [];
+    let isMatchValid = true;
+    
+    for (let argIdx = 0; argIdx < numArgs; argIdx++) {
+      while (currentIndex < result.length && /\s/.test(result[currentIndex])) {
+        currentIndex++;
+      }
+      
+      if (result[currentIndex] === '{') {
+        const braceStartIndex = currentIndex;
+        let braceCount = 1;
+        currentIndex++;
+        
+        while (currentIndex < result.length && braceCount > 0) {
+          if (result[currentIndex] === '{' && result[currentIndex - 1] !== '\\') {
+            braceCount++;
+          } else if (result[currentIndex] === '}' && result[currentIndex - 1] !== '\\') {
+            braceCount--;
+          }
+          currentIndex++;
+        }
+        
+        if (braceCount === 0) {
+          const argContent = result.substring(braceStartIndex + 1, currentIndex - 1);
+          args.push(argContent);
+        } else {
+          isMatchValid = false;
+          break;
+        }
+      } else {
+        isMatchValid = false;
+        break;
+      }
+    }
+    
+    if (isMatchValid && args.length === numArgs) {
+      const replacementText = replacementFn(...args);
+      result = result.substring(0, commandStartIndex) + replacementText + result.substring(currentIndex);
+      regex.lastIndex = 0;
+    } else {
+      regex.lastIndex = commandStartIndex + match[0].length;
+    }
+  }
+  
+  return result;
 }
 
 function stripCommandDefinitions(text: string): string {
