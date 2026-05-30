@@ -33,7 +33,10 @@
         "http://*/*.md",
         "https://*/*.md",
         "http://*/*.markdown",
-        "https://*/*.markdown"
+        "https://*/*.markdown",
+        "file:///*/*.tex",
+        "http://*/*.tex",
+        "https://*/*.tex"
       ],
       "js": [
         "content.js"
