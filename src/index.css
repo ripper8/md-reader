@@ -1337,9 +1337,7 @@ body {
 /* Float page centered inside canvas background wrapper */
 .preview-pane-content:has(.latex-document-theme) {
   background: #f3f4f6 !important;
-  display: flex !important;
-  justify-content: center !important;
-  padding: 15px 0 !important;
+  padding: 1px 0 !important;
   overflow-y: auto !important;
 }
 

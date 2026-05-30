@@ -96,6 +96,10 @@ export function translateLatexToMarkdown(tex: string): string {
   // 1. Strip out LaTeX command definitions and preamble metadata blocks robustly
   md = stripCommandDefinitions(md);
 
+  // 1.5. Clean up comments starting with unescaped % early before any tag parsing or newline joining
+  md = md.split('\n').map(line => line.replace(/(?<!\\)%.*/g, '')).join('\n');
+  md = md.replace(/\\%/g, '%');
+
   // 2. Aggressively remove preamble before \begin{document}
   const docBeginMatch = md.match(/\\begin\s*\{\s*document\s*\}/i);
   if (docBeginMatch && docBeginMatch.index !== undefined) {
@@ -282,10 +286,6 @@ export function translateLatexToMarkdown(tex: string): string {
     }
     return line;
   }).join('\n');
-
-  // 17. Clean up comments starting with unescaped %
-  md = md.split('\n').map(line => line.replace(/(?<!\\)%.*/g, '')).join('\n');
-  md = md.replace(/\\%/g, '%');
 
   return md;
 }

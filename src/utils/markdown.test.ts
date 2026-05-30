@@ -98,3 +98,20 @@ test('translates custom resume commands and strips preamble', () => {
   assert.match(result, /test@test\.com\s*\|\s*\n\s*\+359 878 984 499/)
 });
 
+test('strips comments early to prevent tag deletion from newline joining', () => {
+  const latex = `
+  \\begin{document}
+  %----------HEADING----------
+  \\begin{center}
+    \\textbf{\\Huge Atanas Dimitrov}
+  \\end{center}
+  \\end{document}
+  `
+  const result = translateLatexToMarkdown(latex)
+  
+  // Verify opening and closing tags are fully preserved and match
+  assert.match(result, /<div class="center-text">/)
+  assert.match(result, /<\/div>/)
+  assert.doesNotMatch(result, /%----------HEADING----------/)
+});
+

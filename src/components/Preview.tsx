@@ -22,15 +22,18 @@ interface MarkdownContentProps {
 const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick, fileName }: MarkdownContentProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
+  const isTex = useMemo(() => {
+    return !!(fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}'))
+  }, [content, fileName])
+
   const html = useMemo(() => {
     try {
-      const isTex = fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}')
       const parsedContent = isTex ? translateLatexToMarkdown(content) : content
       return parseMarkdown(parsedContent)
     } catch {
       return '<p>Error rendering document.</p>'
     }
-  }, [content, fileName])
+  }, [content, isTex])
 
   useEffect(() => {
     let isMounted = true
@@ -90,10 +93,6 @@ const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick,
       isMounted = false
     }
   }, [html, isDark, viewMode, onDiagramClick])
-
-  const isTex = useMemo(() => {
-    return fileName?.endsWith('.tex') || content.includes('\\documentclass') || content.includes('\\begin{document}')
-  }, [content, fileName])
 
   return (
     <div
