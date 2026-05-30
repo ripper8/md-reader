@@ -196,8 +196,11 @@ export function translateLatexToMarkdown(tex: string): string {
   md = replaceCommandWithBraceMatching(md, 'emph', (text) => '<em>' + text.trim() + '</em>', 1);
   md = replaceCommandWithBraceMatching(md, 'texttt', (text) => '<code>' + text.trim() + '</code>', 1);
 
-  // 9. Strip formatting sizing / scshape / vspace commands (and trailing spaces)
+  // 9. Strip formatting sizing / scshape / vspace / color commands (and trailing spaces)
   md = md.replace(/\\vspace\*?\{[^}]*\}/g, '');
+  md = md.replace(/\\color(?:\[[^\]]*\])?\{[^}]*\}/g, '');
+  md = md.replace(/\\color\b/g, '');
+  md = md.replace(/\\definecolor\{[^}]*\}\{[^}]*\}\{[^}]*\}/g, '');
   md = replaceCommandWithBraceMatching(md, 'small', (text) => text, 1);
   md = replaceCommandWithBraceMatching(md, 'Huge', (text) => text, 1);
   md = replaceCommandWithBraceMatching(md, 'large', (text) => text, 1);
@@ -286,6 +289,25 @@ export function translateLatexToMarkdown(tex: string): string {
     }
     return line;
   }).join('\n');
+
+  // 18. Clean up naked grouping curly braces (scoping) safely outside math equations
+  const mathBlocks: string[] = [];
+  // Temporarily replace math blocks ($...$ and $$...$$) to protect their curly braces
+  md = md.replace(/\$\$[\s\S]+?\$\$|\$[^\$]+\$/g, (match) => {
+    mathBlocks.push(match);
+    return `___MATH_BLOCK_${mathBlocks.length - 1}___`;
+  });
+
+  // Strip all unescaped { and } from non-math text
+  md = md.replace(/(?<!\\)\{/g, '');
+  md = md.replace(/(?<!\\)\}/g, '');
+
+  // Restore escaped \{ and \} to literal { and }
+  md = md.replace(/\\\{/g, '{');
+  md = md.replace(/\\\}/g, '}');
+
+  // Restore math blocks
+  md = md.replace(/___MATH_BLOCK_(\d+)___/g, (_, idx) => mathBlocks[parseInt(idx)]);
 
   return md;
 }

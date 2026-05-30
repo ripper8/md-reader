@@ -115,3 +115,20 @@ test('strips comments early to prevent tag deletion from newline joining', () =>
   assert.doesNotMatch(result, /%----------HEADING----------/)
 });
 
+test('strips color commands and naked grouping curly braces safely preserving math equations', () => {
+  const latex = `
+  \\begin{document}
+  {\\color{accent} ATANAS DIMITROV }
+  {Software Developer -- Enterprise Solutions}
+  Inline math $a = {b}$ and literal \\{curly\\} braces.
+  \\end{document}
+  `
+  const result = translateLatexToMarkdown(latex)
+  assert.match(result, /ATANAS DIMITROV/)
+  assert.match(result, /Software Developer -- Enterprise Solutions/)
+  assert.doesNotMatch(result, /\\color/)
+  assert.doesNotMatch(result, /\{accent\}/)
+  assert.match(result, /\$a = {b}\$/) // math formula curly braces preserved!
+  assert.match(result, /literal {curly} braces/) // literal curly braces restored!
+});
+
