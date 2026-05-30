@@ -6,7 +6,7 @@ import Sidebar from './components/Sidebar'
 import Editor from './components/Editor'
 import Preview from './components/Preview'
 import Dashboard from './components/Dashboard'
-import { parseMarkdown } from './utils/markdown'
+import { parseMarkdown, translateLatexToMarkdown } from './utils/markdown'
 import {
   saveToHistory,
   removeFromHistory,
@@ -167,7 +167,11 @@ export default function App() {
   const handleOpen = useCallback(async () => {
     try {
       const [handle] = await (window as any).showOpenFilePicker({
-        types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md', '.markdown', '.mdx'] } }],
+        types: [
+          { description: 'All Supported Reader Files', accept: { 'text/markdown': ['.md', '.markdown', '.mdx'], 'text/x-tex': ['.tex'] } },
+          { description: 'Markdown', accept: { 'text/markdown': ['.md', '.markdown', '.mdx'] } },
+          { description: 'LaTeX', accept: { 'text/x-tex': ['.tex'] } }
+        ],
         multiple: false,
       })
       const file: File = await handle.getFile()
@@ -181,9 +185,16 @@ export default function App() {
 
   const handleSaveAs = useCallback(async () => {
     try {
+      const isTex = fileName?.endsWith('.tex')
       const handle = await (window as any).showSaveFilePicker({
-        suggestedName: fileName ?? 'document.md',
-        types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }],
+        suggestedName: fileName ?? (isTex ? 'document.tex' : 'document.md'),
+        types: [
+          isTex 
+            ? { description: 'LaTeX', accept: { 'text/x-tex': ['.tex'] } }
+            : { description: 'Markdown', accept: { 'text/markdown': ['.md'] } },
+          { description: 'Markdown', accept: { 'text/markdown': ['.md'] } },
+          { description: 'LaTeX', accept: { 'text/x-tex': ['.tex'] } }
+        ],
       })
       const writable = await handle.createWritable()
       await writable.write(content)
@@ -302,7 +313,7 @@ ${parseMarkdown(content)}
     dragCounterRef.current = 0
     setIsDragOver(false)
     const file = e.dataTransfer.files[0]
-    if (!file || !file.name.match(/\.(md|markdown|mdx)$/i)) return
+    if (!file || !file.name.match(/\.(md|markdown|mdx|tex)$/i)) return
     const text = await file.text()
     fileHandleRef.current = null
     setContent(text)
@@ -400,7 +411,7 @@ ${parseMarkdown(content)}
         onPrint={handlePrint}
       />
       <div className="app-body">
-        {hasSidebar && !showDashboard && <Sidebar content={content} activeHeading={activeHeading} />}
+        {hasSidebar && !showDashboard && <Sidebar content={fileName?.endsWith('.tex') ? translateLatexToMarkdown(content) : content} activeHeading={activeHeading} />}
         {showDashboard ? (
           <Dashboard
             history={history}
@@ -417,7 +428,7 @@ ${parseMarkdown(content)}
                 <span className="pane-header-badge">Editor</span>
               </div>
               <div className="editor-pane-content">
-                <Editor value={content} onChange={handleContentChange} onScroll={setScrollRatio} isDark={isDark} />
+                <Editor value={content} onChange={handleContentChange} onScroll={setScrollRatio} isDark={isDark} fileName={fileName} />
               </div>
             </div>
             <div className="split-resizer" ref={resizerRef} role="separator" />
@@ -425,7 +436,7 @@ ${parseMarkdown(content)}
               <div className="pane-header">
                 <span className="pane-header-badge">Preview</span>
               </div>
-              <Preview content={content} scrollRatio={scrollRatio} isDark={isDark} viewMode={viewMode} />
+              <Preview content={content} scrollRatio={scrollRatio} isDark={isDark} viewMode={viewMode} fileName={fileName} />
             </div>
           </main>
         )}
@@ -444,8 +455,8 @@ ${parseMarkdown(content)}
       <div className={`drag-overlay ${isDragOver ? 'active' : ''}`}>
         <div className="drag-overlay-box">
           <Upload size={56} className="drag-overlay-icon" />
-          <div className="drag-overlay-text">Drop your Markdown file</div>
-          <div className="drag-overlay-subtext">Supports .md, .markdown, and .mdx</div>
+          <div className="drag-overlay-text">Drop your Markdown or LaTeX file</div>
+          <div className="drag-overlay-subtext">Supports .md, .markdown, .mdx, and .tex</div>
         </div>
       </div>
     </div>

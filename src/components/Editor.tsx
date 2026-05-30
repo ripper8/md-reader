@@ -9,6 +9,7 @@ interface EditorProps {
   onChange: (value: string) => void
   onScroll?: (ratio: number) => void
   isDark: boolean
+  fileName?: string | null
 }
 
 // Graphite & Mint Light Theme

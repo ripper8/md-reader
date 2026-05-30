@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react'
 import mermaid from 'mermaid'
-import { parseMarkdown, escapeHtml } from '../utils/markdown'
+import { parseMarkdown, escapeHtml, translateLatexToMarkdown } from '../utils/markdown'
 
 interface PreviewProps {
   content: string
   scrollRatio: number
   isDark: boolean
   viewMode: string
+  fileName: string | null
 }
 
 interface MarkdownContentProps {
@@ -14,19 +15,22 @@ interface MarkdownContentProps {
   isDark: boolean
   viewMode: string
   onDiagramClick: (svg: string) => void
+  fileName: string | null
 }
 
 // Separate memoized component for Markdown HTML and Mermaid rendering
-const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick }: MarkdownContentProps) => {
+const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick, fileName }: MarkdownContentProps) => {
   const containerRef = useRef<HTMLDivElement>(null)
 
   const html = useMemo(() => {
     try {
-      return parseMarkdown(content)
+      const isTex = fileName?.endsWith('.tex')
+      const parsedContent = isTex ? translateLatexToMarkdown(content) : content
+      return parseMarkdown(parsedContent)
     } catch {
-      return '<p>Error rendering markdown.</p>'
+      return '<p>Error rendering document.</p>'
     }
-  }, [content])
+  }, [content, fileName])
 
   useEffect(() => {
     let isMounted = true
@@ -98,7 +102,7 @@ const MarkdownContent = React.memo(({ content, isDark, viewMode, onDiagramClick 
 
 MarkdownContent.displayName = 'MarkdownContent'
 
-export default function Preview({ content, scrollRatio, isDark, viewMode }: PreviewProps) {
+export default function Preview({ content, scrollRatio, isDark, viewMode, fileName }: PreviewProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const isProgrammaticScroll = useRef(false)
 
@@ -222,6 +226,7 @@ export default function Preview({ content, scrollRatio, isDark, viewMode }: Prev
           isDark={isDark}
           viewMode={viewMode}
           onDiagramClick={handleDiagramClick}
+          fileName={fileName}
         />
       </div>
 
